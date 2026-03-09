@@ -27,12 +27,12 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
 
-      - name: Deploy via rsync
-        uses: burnett01/rsync-deployments@7.0.1
+      - name: Deploy via scp
+        uses: appleboy/scp-action@v0.1.7
         with:
-          switches: -avz --delete
-          path: build/
-          remote_path: /var/www/paperhub.tferrer.dev/
-          remote_host: 177.93.134.66
-          remote_user: ${{ secrets.SSH_USER }}
-          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: 177.93.134.66
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: build/
+          target: /var/www/paperhub.tferrer.dev
+          strip_components: 1
