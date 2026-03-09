@@ -40,7 +40,7 @@
     width: 200px;
   }
   @media (max-width: 767px) {
-    .search-input { width: 70px; }
+    .search-input { width: 70px; visibility: hidden}
   }
   .search-input::placeholder { color: var(--color-text-disabled); }
   .search-input::-webkit-search-cancel-button { cursor: pointer; }
