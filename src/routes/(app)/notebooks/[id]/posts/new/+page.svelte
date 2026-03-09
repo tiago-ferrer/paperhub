@@ -176,7 +176,7 @@
 </div>
 
 <style>
-  .page { max-width: 900px; }
+  .page { max-width: 100%; }
   .page-header { margin-bottom: 24px; }
   .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; display: block; margin-bottom: 8px; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; }
@@ -283,8 +283,9 @@
   .form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
 
   @media (max-width: 1019px) {
-    .page { max-width: 100%; }
-    .md-editor { min-height: 300px; }
+    .md-editor { min-height: 300px; padding: 12px; font-size: 0.8125rem; }
     .md-preview { min-height: 300px; padding: 14px; }
+    .form-actions { flex-wrap: wrap; }
+    .form-actions :global(button), .form-actions :global(a) { flex: 1; }
   }
 </style>

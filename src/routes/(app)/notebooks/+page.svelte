@@ -167,6 +167,9 @@
   @media (max-width: 1019px) {
     .desktop-only { display: none; }
     .mobile-only  { display: flex; flex-direction: column; gap: 12px; }
+
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .header-actions { width: 100%; justify-content: flex-end; }
   }
 
   .table-wrapper { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 10px; overflow: hidden; }

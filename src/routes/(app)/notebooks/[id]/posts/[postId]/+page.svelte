@@ -93,7 +93,7 @@
     {/if}
   </div>
 
-  <div class="layout">
+  <div class="layout" class:no-sidebar={!post.paper_ids?.length}>
     <!-- Left: content -->
     <div class="main-col">
       <div class="card">
@@ -193,6 +193,7 @@
   }
 
   .layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; }
+  .layout.no-sidebar { grid-template-columns: 1fr; }
   @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
 
   .card { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
@@ -263,7 +264,11 @@
 
   @media (max-width: 1019px) {
     .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .header-actions { width: 100%; justify-content: flex-end; }
     .btn-label { display: none; }
     .card { padding: 14px 12px; }
+    .attach-item { flex-wrap: wrap; }
+    .attach-info { min-width: 0; flex: 1 1 120px; }
+    .attach-actions { margin-left: auto; }
   }
 </style>
