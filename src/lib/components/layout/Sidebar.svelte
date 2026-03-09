@@ -48,7 +48,7 @@
           title={$sidebarCollapsed ? item.label : undefined}
           aria-current={active ? 'page' : undefined}
         >
-          <item.icon size={$sidebarCollapsed ? 20 : 31} />
+          <item.icon size={$sidebarCollapsed ? 20 : 20} />
           {#if !$sidebarCollapsed}
             <span>{item.label}</span>
           {/if}
@@ -105,7 +105,7 @@
   }
 
   .product-brand { display: flex; flex-direction: column; gap: 1px; }
-  .product-name { font-size: 20px; font-weight: 600; white-space: nowrap; }
+  .product-name { font-size: 28px; white-space: nowrap; }
   .product-tagline { font-size: 0.6rem; color: #545A62; letter-spacing: 0.05em; white-space: nowrap; }
   .logo-paper { color: #447EE2; }
   .logo-hub   { color: #596772; }

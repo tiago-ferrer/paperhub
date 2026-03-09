@@ -22,7 +22,7 @@
     box-shadow: var(--shadow-2);
   }
   .auth-logo {
-    font-size: 3.1rem; font-weight: 700;
+    font-size: 3.5rem;
     margin-bottom: 32px; text-align: center;
   }
   .auth-tagline {
