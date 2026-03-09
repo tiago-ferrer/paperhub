@@ -1,6 +1,19 @@
 import { marked } from 'marked'
 import katex from 'katex'
 
+// Custom renderer: mermaid fenced blocks become <pre class="mermaid"> containers
+marked.use({
+  renderer: {
+    code({ text, lang }) {
+      if (lang === 'mermaid') {
+        const escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        return `<pre class="mermaid">${escaped}</pre>`
+      }
+      return false // use marked's default for all other code blocks
+    },
+  },
+})
+
 export function renderMarkdown(content: string): string {
   const rendered: string[] = []
 
@@ -26,8 +39,8 @@ export function renderMarkdown(content: string): string {
 }
 
 export function stripMarkdown(content: string, maxLen = 200): string {
-  // Simple strip for preview text
   let text = content
+    .replace(/```[\s\S]+?```/g, '')
     .replace(/\$\$[\s\S]+?\$\$/g, '[math]')
     .replace(/\$[^\n$]+?\$/g, '[math]')
     .replace(/#{1,6}\s+/g, '')

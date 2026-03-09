@@ -11,6 +11,7 @@
   import FormField from '$lib/components/forms/FormField.svelte'
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import MarkdownContent from '$lib/components/ui/MarkdownContent.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
   import { renderMarkdown } from '$lib/utils/markdown'
   import { formatBytes } from '$lib/utils/format'
@@ -185,7 +186,7 @@
         {:else}
           <div class="md-preview">
             {#if previewHtml}
-              {@html previewHtml}
+              <MarkdownContent html={previewHtml} />
             {:else}
               <p class="preview-empty">Nothing to preview yet.</p>
             {/if}
@@ -315,24 +316,6 @@
   .md-preview { min-height: 420px; padding: 20px 24px; background: var(--color-surface-0); font-size: 0.9375rem; line-height: 1.75; overflow-x: auto; }
   .preview-empty { color: var(--color-text-disabled); font-style: italic; }
 
-  .prose :global(h1), .prose :global(h2), .prose :global(h3), .prose :global(h4) {
-    font-weight: 600; line-height: 1.3; margin: 1.25em 0 0.5em; color: var(--color-text-primary);
-  }
-  .prose :global(h1) { font-size: 1.5rem; }
-  .prose :global(h2) { font-size: 1.25rem; }
-  .prose :global(h3) { font-size: 1.1rem; }
-  .prose :global(p) { margin: 0.75em 0; color: var(--color-text-primary); }
-  .prose :global(a) { color: var(--color-primary); }
-  .prose :global(code) { background: var(--color-surface-2); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; font-family: 'Menlo', 'Monaco', monospace; }
-  .prose :global(pre) { background: var(--color-surface-2); padding: 12px 16px; border-radius: 8px; overflow-x: auto; margin: 1em 0; }
-  .prose :global(pre) :global(code) { background: none; padding: 0; }
-  .prose :global(blockquote) { border-left: 3px solid var(--color-primary-subtle); padding-left: 12px; margin: 1em 0; color: var(--color-text-secondary); font-style: italic; }
-  .prose :global(ul), .prose :global(ol) { padding-left: 1.5em; margin: 0.75em 0; }
-  .prose :global(li) { margin: 0.3em 0; }
-  .prose :global(table) { border-collapse: collapse; width: 100%; margin: 1em 0; }
-  .prose :global(th), .prose :global(td) { border: 1px solid var(--color-surface-3); padding: 8px 12px; text-align: left; }
-  .prose :global(th) { background: var(--color-surface-1); font-weight: 500; }
-  .prose :global(.katex-display) { overflow-x: auto; padding: 8px 0; }
 
   /* Paper picker */
   .paper-section { display: flex; flex-direction: column; gap: 10px; }
