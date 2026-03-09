@@ -118,10 +118,10 @@
     {#if paper.role === 'OWNER'}
       <div class="header-actions">
         <Button variant="outlined" size="sm" onclick={() => goto(`/papers/${paper.id}/viewers`)}>
-          <Users size={20} /> Viewers
+          <Users size={20} /><span class="btn-label"> Viewers</span>
         </Button>
         <Button variant="outlined" size="sm" onclick={() => goto(`/papers/${paper.id}/edit`)}>
-          <Pencil size={20} /> Edit
+          <Pencil size={20} /><span class="btn-label"> Edit</span>
         </Button>
       </div>
     {/if}
@@ -240,8 +240,8 @@
       </div>
     </div>
 
-    <!-- Right column: PDF viewer -->
-    <div class="right-col">
+    <!-- Right column: PDF viewer (hidden on mobile when empty) -->
+    <div class="right-col" class:pdf-hidden={!pdfUrl}>
       <div class="card pdf-card">
         <h2 class="card-title">PDF Viewer</h2>
         {#if pdfUrl}
@@ -296,9 +296,25 @@
   .layout { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
   @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
   @media (max-width: 767px) {
-    .page-header { flex-direction: column; align-items: flex-start; }
+    /* Header */
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
     .header-actions { width: 100%; justify-content: flex-end; }
-    .pdf-iframe { height: 60vh; min-height: 300px; }
+    .btn-label { display: none; }
+
+    /* Cards */
+    .card { padding: 14px 12px; }
+
+    /* Meta grid: narrower label column */
+    .meta-grid { grid-template-columns: 80px 1fr; gap: 6px 10px; font-size: 0.8125rem; }
+
+    /* Attach items: stack on very small screens */
+    .attach-item { flex-wrap: wrap; }
+    .attach-info { min-width: 0; flex: 1 1 120px; }
+    .attach-actions { margin-left: auto; }
+
+    /* PDF viewer */
+    .pdf-iframe { height: 70vh; min-height: 280px; }
+    .right-col.pdf-hidden { display: none; }
   }
 
   .card { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
