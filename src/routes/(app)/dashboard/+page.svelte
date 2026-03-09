@@ -5,12 +5,11 @@
   import Button from '$lib/components/ui/Button.svelte'
   import { formatDate } from '$lib/utils/format'
   import { stripMarkdown } from '$lib/utils/markdown'
-  import { FileText, Key, Plus, BookOpen, Users, NotebookPen } from 'lucide-svelte'
+  import { FileText, Plus, BookOpen, NotebookPen, ScrollText } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
-  const ownerCount  = $derived(data.recentPapers.filter(p => p.role === 'OWNER').length)
-  const viewerCount = $derived(data.recentPapers.filter(p => p.role === 'VIEWER').length)
+  const ownerCount = $derived(data.recentPapers.filter(p => p.role === 'OWNER').length)
 </script>
 
 <div class="page">
@@ -38,17 +37,17 @@
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon viewer"><Users size={26} /></div>
+      <div class="stat-icon notebooks"><NotebookPen size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{viewerCount}</p>
-        <p class="stat-label">Shared with me</p>
+        <p class="stat-value">{data.notebookCount}</p>
+        <p class="stat-label">Notebooks</p>
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon keys"><Key size={26} /></div>
+      <div class="stat-icon posts"><ScrollText size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{data.apiKeyCount}</p>
-        <p class="stat-label">API Keys</p>
+        <p class="stat-value">{data.totalPosts}</p>
+        <p class="stat-label">Total Posts</p>
       </div>
     </div>
   </div>
@@ -137,9 +136,9 @@
     background: var(--color-primary-subtle); color: var(--color-primary);
     display: flex; align-items: center; justify-content: center;
   }
-  .stat-icon.owner  { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
-  .stat-icon.viewer { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
-  .stat-icon.keys   { background: color-mix(in srgb, var(--color-info) 15%, transparent); color: var(--color-info); }
+  .stat-icon.owner     { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); }
+  .stat-icon.notebooks { background: color-mix(in srgb, var(--color-warning) 20%, transparent); color: var(--color-warning); }
+  .stat-icon.posts     { background: color-mix(in srgb, var(--color-info) 15%, transparent); color: var(--color-info); }
   .stat-value { font-size: 1.75rem; font-weight: 500; margin: 0; color: var(--color-text-primary); }
   .stat-label { font-size: 0.8125rem; color: var(--color-text-secondary); margin: 0; }
 
