@@ -39,7 +39,7 @@
     font-size: 0.875rem; color: var(--color-text-primary);
     width: 200px;
   }
-  @media (max-width: 1024px) {
+  @media (max-width: 1019px) {
     .search-box { display: none; }
   }
   .search-input::placeholder { color: var(--color-text-disabled); }

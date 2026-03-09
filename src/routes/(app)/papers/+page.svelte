@@ -178,7 +178,7 @@
   .desktop-only { display: block; }
   .mobile-only  { display: none; }
 
-  @media (max-width: 767px) {
+  @media (max-width: 1019px) {
     .desktop-only { display: none; }
     .mobile-only  { display: flex; flex-direction: column; gap: 12px; }
   }

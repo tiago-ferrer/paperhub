@@ -27,6 +27,13 @@
 
   let pdfUrl       = $state<string | null>(null)
   let loadingPdfId = $state<string | null>(null)
+  let pdfColEl     = $state<HTMLElement | null>(null)
+
+  $effect(() => {
+    if (pdfUrl && pdfColEl) {
+      pdfColEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  })
 
   const activeNotes       = $derived((paper.notes ?? []).filter(n => !n.deleted))
   const activeAttachments = $derived(paper.attachments.filter(a => !a.deleted))
@@ -241,12 +248,13 @@
     </div>
 
     <!-- Right column: PDF viewer (hidden on mobile when empty) -->
-    <div class="right-col" class:pdf-hidden={!pdfUrl}>
+    <div class="right-col" class:pdf-hidden={!pdfUrl} bind:this={pdfColEl}>
       <div class="card pdf-card">
         <h2 class="card-title">PDF Viewer</h2>
         {#if pdfUrl}
+          <a href={pdfUrl} target="_blank" rel="noopener" class="pdf-open-btn">Open PDF in browser</a>
           <div class="pdf-scroll-wrap">
-            <iframe src={pdfUrl} title="PDF Viewer" class="pdf-iframe" scrolling="yes"></iframe>
+            <iframe src={pdfUrl} title="PDF Viewer" class="pdf-iframe"></iframe>
           </div>
         {:else}
           <div class="pdf-empty">
@@ -287,7 +295,8 @@
 />
 
 <style>
-  .page { max-width: 100%; }
+  .page { max-width: 100%; overflow-x: hidden; }
+  .card { width: 100%; box-sizing: border-box; }
   .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
   .header-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; }
@@ -297,7 +306,7 @@
 
   .layout { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
   @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
-  @media (max-width: 767px) {
+  @media (max-width: 1019px) {
     /* Header */
     .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
     .header-actions { width: 100%; justify-content: flex-end; }
@@ -346,13 +355,21 @@
   .note-footer { display: flex; align-items: center; justify-content: space-between; }
   .note-date { font-size: 0.6875rem; color: var(--color-text-disabled); }
 
+  .pdf-open-btn {
+    display: none; margin-bottom: 10px;
+    padding: 10px 16px; border-radius: 8px; text-align: center;
+    background: var(--color-primary); color: white; text-decoration: none;
+    font-size: 0.875rem; font-weight: 500;
+  }
+  @media (max-width: 1019px) { .pdf-open-btn { display: block; } }
+
   .pdf-card { display: flex; flex-direction: column; position: sticky; top: 80px; }
   .pdf-scroll-wrap {
     width: 100%; height: calc(100vh - 220px); min-height: 400px;
     overflow: auto; -webkit-overflow-scrolling: touch;
     border-radius: 6px;
   }
-  .pdf-iframe { width: 100%; height: 100%; border: none; display: block; }
+  .pdf-iframe { width: 100%; height: 100%; border: none; display: block; overflow: auto; }
   .pdf-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 12px; height: 300px; color: var(--color-text-disabled);

@@ -5,7 +5,6 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import { buildPatch } from '$lib/utils/diff'
-  import Button from '$lib/components/ui/Button.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import TagInput from '$lib/components/forms/TagInput.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
@@ -148,17 +147,21 @@
 </div>
 
 <style>
-  .page { max-width: 100%; }
+  .page { max-width: 100%; overflow-x: hidden; }
   .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
-  .header-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
   .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }
   .loading { display: flex; justify-content: center; padding: 80px; }
 
-  .form { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 12px; padding: 28px; }
+  .form { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 12px; padding: 28px; width: 100%; box-sizing: border-box; }
   .form-grid { display: flex; flex-direction: column; gap: 18px; }
   .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  @media (max-width: 1019px) {
+    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .form { padding: 16px 14px; border-radius: 8px; }
+    .row-2 { grid-template-columns: 1fr; }
+  }
 
   :global(.form textarea) {
     width: 100%; padding: 8px 12px; border-radius: 6px; resize: vertical;

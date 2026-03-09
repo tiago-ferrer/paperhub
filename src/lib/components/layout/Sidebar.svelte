@@ -82,13 +82,8 @@
   }
   .sidebar.collapsed { width: var(--sidebar-collapsed-width); }
 
-  /* Tablet: force collapsed */
-  @media (max-width: 1024px) {
-    .sidebar { width: var(--sidebar-collapsed-width); }
-  }
-
-  /* Mobile: hidden off-screen, slide in when open */
-  @media (max-width: 767px) {
+  /* Below 1020px: sidebar hidden off-screen, slides in as overlay */
+  @media (max-width: 1019px) {
     .sidebar { width: var(--sidebar-width); transform: translateX(-100%); }
     .sidebar.mobile-open { transform: translateX(0); }
   }
@@ -105,7 +100,7 @@
   }
 
   /* On mobile the sidebar is always expanded, so show header normally */
-  @media (max-width: 767px) {
+  @media (max-width: 1019px) {
     .sidebar-header.collapsed { justify-content: space-between; padding: 0 16px; }
   }
 
@@ -126,7 +121,7 @@
   .collapse-btn:hover { background: var(--color-surface-2); }
 
   /* Hide collapse button on mobile */
-  @media (max-width: 767px) {
+  @media (max-width: 1019px) {
     .collapse-btn { display: none; }
   }
 

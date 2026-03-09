@@ -52,7 +52,7 @@
 
   /* Hide hamburger on desktop */
   .mobile-menu { display: none; }
-  @media (max-width: 767px) {
+  @media (max-width: 1019px) {
     .mobile-menu { display: flex; }
     .topbar { padding: 0 12px; }
   }

@@ -43,13 +43,8 @@
   }
   .main-area.collapsed { margin-left: var(--sidebar-collapsed-width); }
 
-  /* Tablet: always show collapsed sidebar offset */
-  @media (max-width: 1024px) {
-    .main-area, .main-area.collapsed { margin-left: var(--sidebar-collapsed-width); }
-  }
-
-  /* Mobile: sidebar is overlay, no offset */
-  @media (max-width: 767px) {
+  /* Below 1020px: sidebar is overlay, no offset */
+  @media (max-width: 1019px) {
     .main-area, .main-area.collapsed { margin-left: 0; }
   }
 
@@ -58,9 +53,9 @@
     background: rgba(0,0,0,0.4);
   }
 
-  .content { flex: 1; padding: 24px; overflow-y: auto; }
+  .content { flex: 1; padding: 24px; overflow-y: auto; overflow-x: hidden; }
 
-  @media (max-width: 767px) {
-    .content { padding: 16px; }
+  @media (max-width: 1019px) {
+    .content { padding: 16px 12px; }
   }
 </style>

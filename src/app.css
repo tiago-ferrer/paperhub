@@ -152,7 +152,7 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1019px) {
   html { font-size: 93.75%; }
 }
 
