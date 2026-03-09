@@ -35,6 +35,8 @@
 		]
 	},
 	"dependencies": {
-		"lucide-svelte": "^0.577.0"
+		"katex": "^0.16.38",
+		"lucide-svelte": "^0.577.0",
+		"marked": "^17.0.4"
 	}
 }
