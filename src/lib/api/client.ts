@@ -31,9 +31,9 @@ export function makeApi(fetchFn: typeof fetch = globalThis.fetch) {
     })
     const res = await fetchFn(url, { ...init, headers })
 
-    if (res.status === 401 || res.status === 502) {
+    if (res.status === 401) {
       authStore.clear()
-      throw new ApiError(res.status, 'UNAUTHORIZED', res.status === 502 ? 'Service unavailable' : 'Session expired')
+      throw new ApiError(401, 'UNAUTHORIZED', 'Session expired')
     }
 
     if (!res.ok) {
