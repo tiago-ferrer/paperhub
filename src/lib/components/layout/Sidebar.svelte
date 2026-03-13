@@ -5,16 +5,18 @@
   import { currentUser } from '$lib/stores/auth'
   import { NAV_SECTIONS } from '$lib/config/navigation'
   import { transcriptionGroups, refreshTranscriptionGroups } from '$lib/stores/transcriptionGroups'
+import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
   import { ChevronLeft, ChevronRight, Plus } from 'lucide-svelte'
   import Avatar from '$lib/components/ui/Avatar.svelte'
 
   const activeHref = $derived($page.url.pathname)
   const visibleGroups = $derived($transcriptionGroups.filter(g => !g.deleted))
+  const visibleNotebooks = $derived($notebooks.filter(n => !n.deleted))
 
   // Close mobile sidebar on navigation
   $effect(() => { $page.url.pathname; closeMobileSidebar() })
 
-  onMount(() => { refreshTranscriptionGroups() })
+  onMount(() => { refreshTranscriptionGroups(); refreshNotebooks() })
 </script>
 
 <aside
@@ -77,6 +79,24 @@
           <a href="/transcription/new" class="nav-item nav-subitem nav-subitem-new">
             <Plus size={14} />
             <span>New group</span>
+          </a>
+        {/if}
+        {#if item.href === '/notebooks' && !$sidebarCollapsed}
+          {#each visibleNotebooks as nb}
+            {@const nbActive = activeHref.startsWith(`/notebooks/${nb.id}`)}
+            <a
+              href="/notebooks/{nb.id}"
+              class="nav-item nav-subitem"
+              class:active={nbActive}
+              aria-current={nbActive ? 'page' : undefined}
+            >
+              <span class="subitem-dot">·</span>
+              <span>{nb.title}</span>
+            </a>
+          {/each}
+          <a href="/notebooks/new" class="nav-item nav-subitem nav-subitem-new">
+            <Plus size={14} />
+            <span>New notebook</span>
           </a>
         {/if}
       {/each}
