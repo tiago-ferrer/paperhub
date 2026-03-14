@@ -28,7 +28,7 @@ import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
   <div class="sidebar-header" class:collapsed={$sidebarCollapsed}>
     {#if !$sidebarCollapsed}
       <div class="product-brand">
-        <span class="product-name"><span class="logo-paper">paper</span><span class="logo-hub">hub</span></span>
+        <span class="product-name"><span class="logo-paper">schola</span><span class="logo-hub">flow</span></span>
         <span class="product-tagline">Research | Share | Connect</span>
       </div>
     {/if}

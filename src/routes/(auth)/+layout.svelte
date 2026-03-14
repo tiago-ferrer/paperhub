@@ -5,7 +5,7 @@
 
 <div class="auth-shell">
   <div class="auth-card">
-    <div class="auth-logo"><span class="logo-paper">paper</span><span class="logo-hub">hub</span></div>
+    <div class="auth-logo"><span class="logo-paper">schola</span><span class="logo-hub">flow</span></div>
     <p class="auth-tagline">Research | Share | Connect</p>
     {@render children()}
   </div>
