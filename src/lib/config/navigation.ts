@@ -18,14 +18,15 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Kanban', href: '/kanban', icon: KanbanSquare },
     ],
   },
   {
     title: 'Library',
     items: [
+
       { label: 'Papers', href: '/papers', icon: FileText },
       { label: 'Notebooks', href: '/notebooks', icon: NotebookPen },
-      { label: 'Kanban', href: '/kanban', icon: KanbanSquare },
       { label: 'Transcription', href: '/transcription', icon: Mic },
     ],
   },
