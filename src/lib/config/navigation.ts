@@ -1,4 +1,4 @@
-import { FileText, Key, KanbanSquare, LayoutDashboard, Mic, NotebookPen, Settings } from 'lucide-svelte'
+import { FileText, Plug, KanbanSquare, LayoutDashboard, Mic, NotebookPen, Settings } from 'lucide-svelte'
 
 export interface NavItem {
   label: string
@@ -7,6 +7,7 @@ export interface NavItem {
   icon: any
   badge?: string
   ownerOnly?: boolean
+  submenu?: NavItem[]
 }
 
 export interface NavSection {
@@ -34,7 +35,15 @@ export const NAV_SECTIONS: NavSection[] = [
     title: 'System',
     items: [
       { label: 'Settings', href: '/settings', icon: Settings },
-      { label: 'MCP API Keys', href: '/api-keys', icon: Key },
+      {
+        label: 'MCP',
+        href: '/mcp',
+        icon: Plug,
+        submenu: [
+          { label: 'Usage', href: '/mcp/usage', icon: Plug },
+          { label: 'API Keys', href: '/mcp/keys', icon: Plug },
+        ],
+      },
     ],
   },
 ]

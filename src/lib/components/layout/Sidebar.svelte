@@ -18,6 +18,7 @@ import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
   let notebooksExpanded = $state(false)
   let transcriptionExpanded = $state(false)
   let kanbanExpanded = $state(false)
+  let mcpApiKeysExpanded = $state(false)
 
   // Close mobile sidebar on navigation
   $effect(() => { $page.url.pathname; closeMobileSidebar() })
@@ -34,6 +35,10 @@ import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
 
   function toggleKanban() {
     kanbanExpanded = !kanbanExpanded
+  }
+
+  function toggleMcpApiKeys() {
+    mcpApiKeysExpanded = !mcpApiKeysExpanded
   }
 </script>
 
@@ -66,7 +71,7 @@ import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
       {/if}
       {#each section.items as item}
         {@const active = activeHref.startsWith(item.href)}
-        <div class="nav-item-wrapper" class:has-submenu={item.href === '/notebooks' || item.href === '/transcription' || item.href === '/kanban'}>
+        <div class="nav-item-wrapper" class:has-submenu={item.href === '/notebooks' || item.href === '/transcription' || item.href === '/kanban' || item.submenu}>
           <a
             href={item.href}
             class="nav-item"
@@ -112,7 +117,33 @@ import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
               <ChevronRight size={18} class={kanbanExpanded ? 'rotated' : ''} />
             </button>
           {/if}
+          {#if item.submenu && !$sidebarCollapsed}
+            <button
+              class="submenu-toggle"
+              onclick={() => {
+                if (item.href === '/mcp') toggleMcpApiKeys()
+              }}
+              aria-label={item.href === '/mcp' && mcpApiKeysExpanded ? 'Collapse' : 'Expand'}
+              title={item.href === '/mcp' && mcpApiKeysExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronRight size={18} class={item.href === '/mcp' && mcpApiKeysExpanded ? 'rotated' : ''} />
+            </button>
+          {/if}
         </div>
+        {#if item.submenu && !$sidebarCollapsed && item.href === '/mcp' && mcpApiKeysExpanded}
+          {#each item.submenu as subitem}
+            {@const subitemActive = activeHref.startsWith(subitem.href)}
+            <a
+              href={subitem.href}
+              class="nav-item nav-subitem"
+              class:active={subitemActive}
+              aria-current={subitemActive ? 'page' : undefined}
+            >
+              <span class="subitem-dot">·</span>
+              <span>{subitem.label}</span>
+            </a>
+          {/each}
+        {/if}
         {#if item.href === '/kanban' && !$sidebarCollapsed && kanbanExpanded}
           {#each visibleBoards as board}
             {@const boardActive = activeHref.startsWith(`/kanban/${board.id}`)}
