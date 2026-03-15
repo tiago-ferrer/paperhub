@@ -34,5 +34,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: build/
-          target: /var/www/paperhub.tferrer.dev
+          target: /var/www/scholaflow.com
           strip_components: 1
