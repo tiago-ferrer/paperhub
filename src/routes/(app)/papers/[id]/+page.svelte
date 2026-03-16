@@ -10,19 +10,19 @@
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
-  import { formatDate, formatBytes, formatDoi } from '$lib/utils/format'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
+  import { formatDate, formatBytes, formatDoi } from '$lib/utils/format'
   import { Pencil, Users, Plus, ExternalLink, Download, FileText, Trash2, Eye, FolderOpen } from 'lucide-svelte'
   import type { Attachment } from '$lib/types/paper'
 
   let { data }: { data: PageData } = $props()
   let paper = $derived(data.paper)
 
-  let showAddToProject = $state(false)
-  let noteSlideOpen    = $state(false)
-  let newNote          = $state('')
-  let savingNote       = $state(false)
-  let deleteNoteTarget = $state<string | null>(null)
+  let showAddToProject  = $state(false)
+  let noteSlideOpen     = $state(false)
+  let newNote           = $state('')
+  let savingNote        = $state(false)
+  let deleteNoteTarget  = $state<string | null>(null)
 
   let uploadingFile      = $state(false)
   let deleteAttachTarget = $state<Attachment | null>(null)
@@ -120,9 +120,13 @@
     <div class="header-left">
       <a href="/papers" class="back-link">← Papers</a>
       <div class="title-row">
+        <span class="entry-badge">{paper.entry_type}</span>
         <h1>{paper.title}</h1>
         <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
       </div>
+      {#if paper.citation_key}
+        <span class="citation-key">cite: {paper.citation_key}</span>
+      {/if}
     </div>
     <div class="header-actions">
       <Button variant="outlined" size="sm" onclick={() => showAddToProject = true}>
@@ -140,24 +144,54 @@
   </div>
 
   <div class="layout">
-    <!-- Left column: metadata, abstract, notes, attachments -->
+    <!-- Left column -->
     <div class="left-col">
       <div class="card">
         <h2 class="card-title">Metadata</h2>
         <div class="meta-grid">
-          <span class="meta-label">Authors</span>
-          <span>{paper.authors.join(', ')}</span>
-          <span class="meta-label">Year</span>
-          <span>{paper.year}</span>
-          <span class="meta-label">Journal</span>
-          <span>{paper.journal}</span>
+          {#if paper.author?.length}
+            <span class="meta-label">Authors</span>
+            <span>{paper.author.join(', ')}</span>
+          {/if}
+          {#if paper.editor?.length}
+            <span class="meta-label">Editors</span>
+            <span>{paper.editor.join(', ')}</span>
+          {/if}
+          {#if paper.year}
+            <span class="meta-label">Year</span>
+            <span>{paper.year}{paper.month ? ` (${paper.month})` : ''}</span>
+          {/if}
+          {#if paper.journal}
+            <span class="meta-label">Journal</span>
+            <span>{paper.journal}</span>
+          {/if}
+          {#if paper.booktitle}
+            <span class="meta-label">Booktitle</span>
+            <span>{paper.booktitle}</span>
+          {/if}
+          {#if paper.publisher}
+            <span class="meta-label">Publisher</span>
+            <span>{paper.publisher}{paper.address ? `, ${paper.address}` : ''}</span>
+          {/if}
           {#if paper.volume}
             <span class="meta-label">Volume</span>
-            <span>{paper.volume}{paper.issue ? ` (${paper.issue})` : ''}</span>
+            <span>{paper.volume}{paper.number ? ` (${paper.number})` : ''}</span>
+          {/if}
+          {#if !paper.volume && paper.number}
+            <span class="meta-label">No.</span>
+            <span>{paper.number}</span>
           {/if}
           {#if paper.pages}
             <span class="meta-label">Pages</span>
             <span>{paper.pages}</span>
+          {/if}
+          {#if paper.series}
+            <span class="meta-label">Series</span>
+            <span>{paper.series}</span>
+          {/if}
+          {#if paper.edition}
+            <span class="meta-label">Edition</span>
+            <span>{paper.edition}</span>
           {/if}
           {#if paper.doi}
             <span class="meta-label">DOI</span>
@@ -165,11 +199,17 @@
               {paper.doi} <ExternalLink size={16} />
             </a>
           {/if}
+          {#if paper.url}
+            <span class="meta-label">URL</span>
+            <a href={paper.url} target="_blank" rel="noreferrer" class="doi-link">
+              Link <ExternalLink size={16} />
+            </a>
+          {/if}
           {#if paper.citation_count}
             <span class="meta-label">Citations</span>
             <span>{paper.citation_count.toLocaleString()}</span>
           {/if}
-          {#if paper.categories.length}
+          {#if paper.categories?.length}
             <span class="meta-label">Categories</span>
             <div class="chip-list">
               {#each paper.categories as cat}
@@ -187,10 +227,17 @@
         </div>
       {/if}
 
+      {#if paper.note}
+        <div class="card">
+          <h2 class="card-title">Bibliographic note</h2>
+          <p class="bib-note">{paper.note}</p>
+        </div>
+      {/if}
+
       {#if paper.role === 'OWNER'}
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">Notes</h2>
+            <h2 class="card-title">My notes</h2>
             <Button variant="tonal" size="sm" onclick={() => noteSlideOpen = true}>
               <Plus size={18} /> Add
             </Button>
@@ -252,7 +299,7 @@
       </div>
     </div>
 
-    <!-- Right column: PDF viewer (hidden on mobile when empty) -->
+    <!-- Right column: PDF viewer -->
     <div class="right-col" class:pdf-hidden={!pdfUrl} bind:this={pdfColEl}>
       <div class="card pdf-card">
         <h2 class="card-title">PDF Viewer</h2>
@@ -281,6 +328,13 @@
   </div>
 </SlideOver>
 
+<AddToProjectModal
+  open={showAddToProject}
+  entityType="PAPER"
+  entityId={paper.id}
+  onclose={() => showAddToProject = false}
+/>
+
 <ConfirmDialog
   open={!!deleteNoteTarget}
   title="Delete note?"
@@ -299,43 +353,37 @@
   oncancel={() => deleteAttachTarget = null}
 />
 
-<AddToProjectModal
-  open={showAddToProject}
-  entityType="PAPER"
-  entityId={paper.id}
-  onclose={() => showAddToProject = false}
-/>
-
 <style>
   .page { max-width: 100%; overflow-x: hidden; }
   .card { width: 100%; box-sizing: border-box; }
   .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
-  .header-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .header-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; }
-  .title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }
-  .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
 
-  .layout { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; align-items: start; }
+  .entry-badge {
+    display: inline-block; padding: 3px 9px; border-radius: 8px; flex-shrink: 0;
+    font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+    background: var(--color-primary-subtle); color: var(--color-primary);
+  }
+  .citation-key {
+    font-size: 0.8125rem; color: var(--color-text-disabled);
+    font-family: monospace; letter-spacing: 0.02em;
+  }
+
+  .layout { display: grid; grid-template-columns: 1fr minmax(0, 50%); gap: 20px; align-items: start; }
   @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
   @media (max-width: 1019px) {
-    /* Header */
     .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
     .header-actions { width: 100%; justify-content: flex-end; }
     .btn-label { display: none; }
-
-    /* Cards */
     .card { padding: 14px 12px; }
-
-    /* Meta grid: narrower label column */
     .meta-grid { grid-template-columns: 80px 1fr; gap: 6px 10px; font-size: 0.8125rem; }
-
-    /* Attach items: stack on very small screens */
     .attach-item { flex-wrap: wrap; }
     .attach-info { min-width: 0; flex: 1 1 120px; }
     .attach-actions { margin-left: auto; }
-
-    /* PDF viewer */
     .pdf-scroll-wrap { height: 70vh; min-height: 280px; }
     .right-col.pdf-hidden { display: none; }
   }
@@ -353,6 +401,7 @@
   .cat-chip { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; background: var(--color-surface-2); color: var(--color-text-secondary); }
 
   .abstract { font-size: 0.875rem; line-height: 1.7; margin: 0; }
+  .bib-note { font-size: 0.875rem; line-height: 1.6; margin: 0; color: var(--color-text-secondary); font-style: italic; }
 
   .attach-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
   .attach-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--color-surface-1); border-radius: 8px; color: var(--color-text-secondary); }
@@ -378,8 +427,7 @@
   .pdf-card { display: flex; flex-direction: column; position: sticky; top: 80px; }
   .pdf-scroll-wrap {
     width: 100%; height: calc(100vh - 220px); min-height: 400px;
-    overflow: auto; -webkit-overflow-scrolling: touch;
-    border-radius: 6px;
+    overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 6px;
   }
   .pdf-iframe { width: 100%; height: 100%; border: none; display: block; overflow: auto; }
   .pdf-empty {

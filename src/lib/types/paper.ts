@@ -1,6 +1,28 @@
+export type BibTexEntryType =
+  | 'article'
+  | 'book'
+  | 'booklet'
+  | 'conference'
+  | 'inbook'
+  | 'incollection'
+  | 'inproceedings'
+  | 'manual'
+  | 'mastersthesis'
+  | 'misc'
+  | 'phdthesis'
+  | 'proceedings'
+  | 'techreport'
+  | 'unpublished'
+
+export const BIBTEX_ENTRY_TYPES: BibTexEntryType[] = [
+  'article', 'book', 'booklet', 'conference', 'inbook', 'incollection',
+  'inproceedings', 'manual', 'mastersthesis', 'misc', 'phdthesis',
+  'proceedings', 'techreport', 'unpublished',
+]
+
 export type PaperRole = 'OWNER' | 'VIEWER'
 
-export interface Note {
+export interface UserNote {
   id: string
   note: string
   created_at: string
@@ -19,42 +41,72 @@ export interface Attachment {
 
 export interface Paper {
   id: string
+  owner: string
   role: PaperRole
-  category: string
+
+  // BibTeX core
+  entry_type: BibTexEntryType
+  citation_key: string | null
   title: string
-  authors: string[]
-  year: number
-  journal: string
-  volume: string
-  issue: string | null
-  pages: string
-  doi: string
-  citation_count: number
-  url: string
-  abstract: string
-  categories: string[]
+  author: string[] | null
+  editor: string[] | null
+  year: number | null
+  month: string | null
+
+  // Journal / conference
+  journal: string | null
+  booktitle: string | null
+  volume: string | null
+  number: string | null
+  pages: string | null
+  series: string | null
+
+  // Publisher
+  publisher: string | null
+  address: string | null
+  edition: string | null
+
+  // Identifiers
+  doi: string | null
+  url: string | null
+
+  // Extra metadata
+  abstract: string | null
+  note: string | null
+  categories: string[] | null
+  citation_count: number | null
+
+  // App fields
   created_at: string
   updated_at: string
-  notes: Note[] | null
+  notes: UserNote[] | null
   attachments: Attachment[]
-  owner: string
   deleted: boolean
 }
 
 export interface CreatePaperPayload {
+  entry_type: BibTexEntryType
   title: string
-  category: string
-  authors: string[]
-  year: number
-  journal: string
-  volume: string
-  issue?: string | null
-  pages: string
-  doi: string
-  citation_count?: number
-  url?: string
-  abstract?: string
-  categories?: string[]
+  citation_key?: string | null
+  author?: string[] | null
+  editor?: string[] | null
+  year?: number | null
+  month?: string | null
+  journal?: string | null
+  booktitle?: string | null
+  volume?: string | null
+  number?: string | null
+  pages?: string | null
+  series?: string | null
+  publisher?: string | null
+  address?: string | null
+  edition?: string | null
+  doi?: string | null
+  url?: string | null
+  abstract?: string | null
+  note?: string | null
+  categories?: string[] | null
+  citation_count?: number | null
 }
 
 export type PatchPaperPayload = Partial<CreatePaperPayload>

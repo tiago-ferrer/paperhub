@@ -11,14 +11,57 @@
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Eye, Pencil, Trash2, Users } from 'lucide-svelte'
+  import FromBibTexModal from '$lib/components/papers/FromBibTexModal.svelte'
+  import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3 } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
+  // ── Column picker ──────────────────────────────────────────────────────────
+  const COLUMNS = [
+    { key: 'type',    label: 'Type' },
+    { key: 'authors', label: 'Authors' },
+    { key: 'year',    label: 'Year' },
+    { key: 'venue',   label: 'Venue' },
+    { key: 'role',    label: 'Role' },
+    { key: 'updated', label: 'Updated' },
+  ] as const
+  type ColKey = typeof COLUMNS[number]['key']
+
+  const LS_KEY = 'papers:columns'
+  const ALL_KEYS = COLUMNS.map(c => c.key) as ColKey[]
+
+  function loadCols(): Set<ColKey> {
+    if (typeof localStorage === 'undefined') return new Set(ALL_KEYS)
+    try {
+      const raw = localStorage.getItem(LS_KEY)
+      if (raw) {
+        const arr = JSON.parse(raw) as ColKey[]
+        const valid = arr.filter(k => ALL_KEYS.includes(k))
+        if (valid.length) return new Set(valid)
+      }
+    } catch { /* ignore */ }
+    return new Set(ALL_KEYS)
+  }
+
+  let visibleCols = $state<Set<ColKey>>(loadCols())
+  let showColPicker = $state(false)
+
+  function toggleCol(key: ColKey) {
+    const next = new Set(visibleCols)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    visibleCols = next
+    try { localStorage.setItem(LS_KEY, JSON.stringify([...next])) } catch { /* ignore */ }
+  }
+
+  const col = $derived((key: ColKey) => visibleCols.has(key))
+
+  // ── Filters ────────────────────────────────────────────────────────────────
   type Filter = 'all' | 'owner' | 'shared'
   let filter = $state<Filter>('all')
   let deleteTarget = $state<Paper | null>(null)
   let deleting = $state(false)
+  let showFromBibTex = $state(false)
 
   const filtered = $derived.by(() => {
     const items = data.papers.items
@@ -26,6 +69,11 @@
     if (filter === 'shared') return items.filter(p => p.role === 'VIEWER')
     return items
   })
+
+  // Venue: journal > booktitle > publisher > —
+  function venue(paper: Paper): string {
+    return paper.journal ?? paper.booktitle ?? paper.publisher ?? '—'
+  }
 
   async function confirmDelete() {
     if (!deleteTarget) return
@@ -43,18 +91,54 @@
   }
 </script>
 
+<svelte:window onclick={(e) => {
+  if (showColPicker && !(e.target as HTMLElement).closest('.col-picker-wrap')) showColPicker = false
+}} />
+
 <div class="page">
   <div class="page-header">
     <h1>Papers</h1>
-    <Button onclick={() => goto('/papers/new')}><Plus size={20} /> New Paper</Button>
+    <div class="header-actions">
+      <Button variant="outlined" onclick={() => showFromBibTex = true}><BookMarked size={18} /> From BibTeX</Button>
+      <Button onclick={() => goto('/papers/new')}><Plus size={20} /> New Paper</Button>
+    </div>
   </div>
 
-  <div class="filters">
-    {#each (['all', 'owner', 'shared'] as Filter[]) as f}
-      <button class="filter-chip" class:active={filter === f} onclick={() => filter = f}>
-        {f === 'all' ? 'All' : f === 'owner' ? 'Owner' : 'Shared with me'}
+  <div class="toolbar">
+    <div class="filters">
+      {#each (['all', 'owner', 'shared'] as Filter[]) as f}
+        <button class="filter-chip" class:active={filter === f} onclick={() => filter = f}>
+          {f === 'all' ? 'All' : f === 'owner' ? 'Owner' : 'Shared with me'}
+        </button>
+      {/each}
+    </div>
+
+    <!-- Column picker -->
+    <div class="col-picker-wrap desktop-only">
+      <button
+        class="col-picker-btn"
+        class:active={showColPicker}
+        onclick={() => showColPicker = !showColPicker}
+        title="Choose columns"
+      >
+        <Columns3 size={16} />
+        Columns
       </button>
-    {/each}
+      {#if showColPicker}
+        <div class="col-picker-dropdown">
+          {#each COLUMNS as col}
+            <label class="col-option">
+              <input
+                type="checkbox"
+                checked={visibleCols.has(col.key)}
+                onchange={() => toggleCol(col.key)}
+              />
+              {col.label}
+            </label>
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 
   {#if filtered.length === 0}
@@ -66,11 +150,12 @@
         <thead>
           <tr>
             <th>Title</th>
-            <th>Category</th>
-            <th>Year</th>
-            <th>Journal</th>
-            <th>Role</th>
-            <th>Updated</th>
+            {#if col('type')}<th>Type</th>{/if}
+            {#if col('authors')}<th>Authors</th>{/if}
+            {#if col('year')}<th>Year</th>{/if}
+            {#if col('venue')}<th>Venue</th>{/if}
+            {#if col('role')}<th>Role</th>{/if}
+            {#if col('updated')}<th>Updated</th>{/if}
             <th class="actions-col">Actions</th>
           </tr>
         </thead>
@@ -78,11 +163,12 @@
           {#each filtered as paper}
             <tr>
               <td class="title-cell"><a href="/papers/{paper.id}" class="paper-link">{paper.title}</a></td>
-              <td>{paper.category}</td>
-              <td>{paper.year}</td>
-              <td class="journal-cell">{paper.journal}</td>
-              <td><StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} /></td>
-              <td class="date-cell">{formatDate(paper.updated_at)}</td>
+              {#if col('type')}<td><span class="entry-badge">{paper.entry_type}</span></td>{/if}
+              {#if col('authors')}<td class="authors-cell">{paper.author?.join(', ') ?? '—'}</td>{/if}
+              {#if col('year')}<td>{paper.year ?? '—'}</td>{/if}
+              {#if col('venue')}<td class="journal-cell">{venue(paper)}</td>{/if}
+              {#if col('role')}<td><StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} /></td>{/if}
+              {#if col('updated')}<td class="date-cell">{formatDate(paper.updated_at)}</td>{/if}
               <td class="actions-cell">
                 <button class="icon-btn" title="View" onclick={() => goto(`/papers/${paper.id}`)}>
                   <Eye size={20} />
@@ -111,12 +197,19 @@
         <div class="paper-card" onclick={() => goto(`/papers/${paper.id}`)}>
           <div class="card-top">
             <a href="/papers/{paper.id}" class="paper-link card-title">{paper.title}</a>
-            <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
+            <div class="card-badges">
+              <span class="entry-badge">{paper.entry_type}</span>
+              <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
+            </div>
           </div>
           <div class="card-meta">
-            <span>{paper.year}</span>
+            {#if paper.author?.length}
+              <span class="card-authors">{paper.author[0]}{paper.author.length > 1 ? ' et al.' : ''}</span>
+              <span class="dot">·</span>
+            {/if}
+            <span>{paper.year ?? '—'}</span>
             <span class="dot">·</span>
-            <span class="card-journal">{paper.journal}</span>
+            <span class="card-journal">{venue(paper)}</span>
           </div>
           <div class="card-footer">
             <span class="card-date">{formatDate(paper.updated_at)}</span>
@@ -149,6 +242,8 @@
   {/if}
 </div>
 
+<FromBibTexModal open={showFromBibTex} onclose={() => showFromBibTex = false} />
+
 <ConfirmDialog
   open={!!deleteTarget}
   title="Delete paper?"
@@ -161,11 +256,11 @@
 <style>
   .page { max-width: 100%; }
   .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
-  .header-left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-  .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
 
-  .filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; }
   .filter-chip {
     padding: 6px 16px; border-radius: 20px; border: 1px solid var(--color-surface-3);
     background: transparent; font-size: 0.8125rem; cursor: pointer; color: var(--color-text-secondary);
@@ -174,10 +269,40 @@
   .filter-chip:hover { background: var(--color-surface-2); }
   .filter-chip.active { background: var(--color-primary-subtle); color: var(--color-primary); border-color: var(--color-primary); }
 
+  /* Column picker */
+  .col-picker-wrap { position: relative; }
+  .col-picker-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 8px; border: 1px solid var(--color-surface-3);
+    background: transparent; font-size: 0.8125rem; cursor: pointer; color: var(--color-text-secondary);
+    transition: all var(--transition-standard);
+  }
+  .col-picker-btn:hover, .col-picker-btn.active { background: var(--color-surface-2); color: var(--color-text-primary); }
+  .col-picker-dropdown {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+    background: var(--color-surface-0); border: 1px solid var(--color-surface-3);
+    border-radius: 10px; box-shadow: var(--shadow-2);
+    padding: 8px; display: flex; flex-direction: column; gap: 2px; min-width: 160px;
+  }
+  .col-option {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 0.875rem; color: var(--color-text-primary);
+    transition: background var(--transition-standard);
+  }
+  .col-option:hover { background: var(--color-surface-2); }
+  .col-option input[type="checkbox"] { accent-color: var(--color-primary); width: 15px; height: 15px; cursor: pointer; }
+
+  .entry-badge {
+    display: inline-block; padding: 2px 7px; border-radius: 8px;
+    font-size: 0.6875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;
+    background: var(--color-surface-2); color: var(--color-text-secondary);
+    white-space: nowrap;
+  }
+
   /* Desktop table */
   .desktop-only { display: block; }
   .mobile-only  { display: none; }
-
   @media (max-width: 1019px) {
     .desktop-only { display: none; }
     .mobile-only  { display: flex; flex-direction: column; gap: 12px; }
@@ -186,17 +311,18 @@
   .table-wrapper { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 10px; overflow: hidden; }
   .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
   th { text-align: left; padding: 12px 16px; font-size: 0.75rem; font-weight: 500; color: var(--color-text-secondary); border-bottom: 1px solid var(--color-surface-3); background: var(--color-surface-1); }
-  td { padding: 12px 16px; border-bottom: 1px solid var(--color-surface-2); }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--color-surface-2); vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--color-surface-1); }
 
-  .title-cell { max-width: 280px; }
+  .title-cell { max-width: 260px; }
+  .authors-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); font-size: 0.8125rem; }
   .journal-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .date-cell { white-space: nowrap; color: var(--color-text-secondary); font-size: 0.8125rem; }
   .paper-link { color: var(--color-text-primary); text-decoration: none; font-weight: 500; }
   .paper-link:hover { color: var(--color-primary); }
   .actions-col { width: 1%; }
-  .actions-cell { display: flex; align-items: center; gap: 2px; }
+  .actions-cell { display: flex; align-items: center; justify-content: center; gap: 2px; }
 
   /* Mobile cards */
   .paper-card {
@@ -207,8 +333,10 @@
   .paper-card:hover { background: var(--color-surface-1); }
   .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
   .card-title { font-size: 0.9375rem; font-weight: 500; line-height: 1.4; flex: 1; }
-  .card-meta { font-size: 0.8125rem; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-  .card-journal { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+  .card-badges { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .card-meta { font-size: 0.8125rem; color: var(--color-text-secondary); display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .card-authors { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-journal { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
   .dot { color: var(--color-text-disabled); }
   .card-footer { display: flex; align-items: center; justify-content: space-between; }
   .card-date { font-size: 0.75rem; color: var(--color-text-disabled); }

@@ -5,10 +5,11 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import { buildPatch } from '$lib/utils/diff'
+  import { BIBTEX_ENTRY_TYPES, type BibTexEntryType, type Paper } from '$lib/types/paper'
   import FormField from '$lib/components/forms/FormField.svelte'
   import TagInput from '$lib/components/forms/TagInput.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
-  import type { Paper } from '$lib/types/paper'
+  import Button from '$lib/components/ui/Button.svelte'
   import { onMount } from 'svelte'
 
   const id = $page.params.id as string
@@ -18,37 +19,71 @@
   let saving   = $state(false)
   let errors   = $state<Record<string, string>>({})
 
-  let title     = $state('')
-  let category  = $state('')
-  let authors   = $state<string[]>([])
-  let year      = $state(2024)
+  // Identity
+  let entryType   = $state<BibTexEntryType>('article')
+  let citationKey = $state('')
+  let title       = $state('')
+  let abstract    = $state('')
+
+  // Authors
+  let author = $state<string[]>([])
+  let editor = $state<string[]>([])
+
+  // Publication
   let journal   = $state('')
+  let booktitle = $state('')
+  let year      = $state<number | null>(null)
+  let month     = $state('')
   let volume    = $state('')
-  let issue     = $state('')
+  let number    = $state('')
   let pages     = $state('')
-  let doi       = $state('')
-  let url       = $state('')
-  let abstract  = $state('')
-  let citationCount = $state(0)
-  let categories = $state<string[]>([])
+  let series    = $state('')
+
+  // Publisher
+  let publisher = $state('')
+  let address   = $state('')
+  let edition   = $state('')
+
+  // Links
+  let doi = $state('')
+  let url = $state('')
+
+  // Extra
+  let note          = $state('')
+  let categories    = $state<string[]>([])
+  let citationCount = $state<number | null>(null)
+
+  function autoKey() {
+    const lastName = author[0]?.split(' ').pop() ?? editor[0]?.split(' ').pop() ?? ''
+    if (lastName && year) citationKey = `${lastName.toLowerCase()}${year}`
+  }
 
   onMount(async () => {
     try {
-      const paper = await papersApi.get(id)
-      original = paper
-      title    = paper.title
-      category = paper.category
-      authors  = [...paper.authors]
-      year     = paper.year
-      journal  = paper.journal
-      volume   = paper.volume ?? ''
-      issue    = paper.issue ?? ''
-      pages    = paper.pages
-      doi      = paper.doi
-      url      = paper.url ?? ''
-      abstract = paper.abstract ?? ''
-      citationCount = paper.citation_count ?? 0
-      categories = [...(paper.categories ?? [])]
+      const p = await papersApi.get(id)
+      original    = p
+      entryType   = p.entry_type
+      citationKey = p.citation_key ?? ''
+      title       = p.title
+      abstract    = p.abstract ?? ''
+      author      = [...(p.author ?? [])]
+      editor      = [...(p.editor ?? [])]
+      journal     = p.journal ?? ''
+      booktitle   = p.booktitle ?? ''
+      year        = p.year
+      month       = p.month ?? ''
+      volume      = p.volume ?? ''
+      number      = p.number ?? ''
+      pages       = p.pages ?? ''
+      series      = p.series ?? ''
+      publisher   = p.publisher ?? ''
+      address     = p.address ?? ''
+      edition     = p.edition ?? ''
+      doi         = p.doi ?? ''
+      url         = p.url ?? ''
+      note        = p.note ?? ''
+      categories  = [...(p.categories ?? [])]
+      citationCount = p.citation_count
     } catch {
       toast.error('Failed to load paper')
       goto('/papers')
@@ -59,13 +94,7 @@
 
   function validate() {
     const e: Record<string, string> = {}
-    if (!title.trim())    e.title    = 'Title is required'
-    if (!category.trim()) e.category = 'Category is required'
-    if (!journal.trim())  e.journal  = 'Journal is required'
-    if (!pages.trim())    e.pages    = 'Pages are required'
-    if (!doi.trim())      e.doi      = 'DOI is required'
-    if (!authors.length)  e.authors  = 'At least one author is required'
-    if (year < 1000 || year > new Date().getFullYear() + 1) e.year = 'Invalid year'
+    if (!title.trim()) e.title = 'Title is required'
     return e
   }
 
@@ -75,9 +104,32 @@
     errors = validate()
     if (Object.keys(errors).length) return
 
-    const current = { title, category, authors, year, journal, volume, issue: issue || null, pages, doi, url, abstract, citation_count: citationCount, categories }
-    const patch = buildPatch(original, current as Partial<Paper>)
+    const current = {
+      entry_type:     entryType,
+      citation_key:   citationKey.trim() || null,
+      title:          title.trim(),
+      author:         author.length ? author : null,
+      editor:         editor.length ? editor : null,
+      year,
+      month:          month.trim() || null,
+      journal:        journal.trim() || null,
+      booktitle:      booktitle.trim() || null,
+      volume:         volume.trim() || null,
+      number:         number.trim() || null,
+      pages:          pages.trim() || null,
+      series:         series.trim() || null,
+      publisher:      publisher.trim() || null,
+      address:        address.trim() || null,
+      edition:        edition.trim() || null,
+      doi:            doi.trim() || null,
+      url:            url.trim() || null,
+      abstract:       abstract.trim() || null,
+      note:           note.trim() || null,
+      categories:     categories.length ? categories : null,
+      citation_count: citationCount,
+    }
 
+    const patch = buildPatch(original, current as Partial<Paper>)
     if (!Object.keys(patch).length) {
       toast.info('No changes to save')
       return
@@ -107,67 +159,192 @@
     <div class="loading"><Spinner size={41} /></div>
   {:else}
     <form onsubmit={submit} class="form">
-      <div class="form-grid">
-        <FormField label="Title" required error={errors.title}>
-          <input type="text" bind:value={title} />
-        </FormField>
-        <FormField label="Category" required error={errors.category}>
-          <input type="text" bind:value={category} />
-        </FormField>
-        <FormField label="Authors" required error={errors.authors}>
-          <TagInput bind:tags={authors} placeholder="Name, press Enter…" />
-        </FormField>
-        <FormField label="Year" required error={errors.year}>
-          <input type="number" bind:value={year} min="1000" max={new Date().getFullYear() + 1} />
-        </FormField>
-        <FormField label="Journal" required error={errors.journal}>
-          <input type="text" bind:value={journal} />
-        </FormField>
-        <div class="row-2">
-          <FormField label="Volume"><input type="text" bind:value={volume} /></FormField>
-          <FormField label="Issue"><input type="text" bind:value={issue} /></FormField>
+
+      <!-- Identity -->
+      <fieldset class="group">
+        <legend class="group-legend">Identity</legend>
+        <div class="form-grid">
+          <FormField label="Entry Type" required>
+            <select bind:value={entryType}>
+              {#each BIBTEX_ENTRY_TYPES as t}
+                <option value={t}>{t}</option>
+              {/each}
+            </select>
+          </FormField>
+          <FormField label="Title" required error={errors.title}>
+            <input type="text" bind:value={title} />
+          </FormField>
+          <FormField label="Citation Key">
+            <div class="input-with-action">
+              <input type="text" bind:value={citationKey} placeholder="e.g. einstein1905" />
+              <button type="button" class="auto-btn" onclick={autoKey} title="Auto-generate from first author + year">
+                Auto
+              </button>
+            </div>
+          </FormField>
+          <FormField label="Abstract">
+            <textarea bind:value={abstract} rows={5}></textarea>
+          </FormField>
         </div>
-        <FormField label="Pages" required error={errors.pages}>
-          <input type="text" bind:value={pages} />
-        </FormField>
-        <FormField label="DOI" required error={errors.doi}>
-          <input type="text" bind:value={doi} />
-        </FormField>
-        <FormField label="URL"><input type="url" bind:value={url} /></FormField>
-        <FormField label="Citation Count"><input type="number" bind:value={citationCount} min="0" /></FormField>
-        <FormField label="Categories">
-          <TagInput bind:tags={categories} placeholder="Tag, press Enter…" />
-        </FormField>
-        <FormField label="Abstract">
-          <textarea bind:value={abstract} rows={6}></textarea>
-        </FormField>
+      </fieldset>
+
+      <!-- Authors -->
+      <fieldset class="group">
+        <legend class="group-legend">Authors</legend>
+        <div class="form-grid">
+          <FormField label="Author(s)">
+            <TagInput bind:tags={author} placeholder="Full name, press Enter…" />
+          </FormField>
+          <FormField label="Editor(s)">
+            <TagInput bind:tags={editor} placeholder="Full name, press Enter…" />
+          </FormField>
+        </div>
+      </fieldset>
+
+      <!-- Publication -->
+      <fieldset class="group">
+        <legend class="group-legend">Publication</legend>
+        <div class="form-grid">
+          <FormField label="Journal">
+            <input type="text" bind:value={journal} />
+          </FormField>
+          <FormField label="Booktitle">
+            <input type="text" bind:value={booktitle} placeholder="Conference or book title" />
+          </FormField>
+          <div class="row-2">
+            <FormField label="Year">
+              <input type="number" bind:value={year} min="1000" max={new Date().getFullYear() + 5} />
+            </FormField>
+            <FormField label="Month">
+              <input type="text" bind:value={month} placeholder="e.g. jan, March" />
+            </FormField>
+          </div>
+          <div class="row-2">
+            <FormField label="Volume"><input type="text" bind:value={volume} /></FormField>
+            <FormField label="Number / Issue"><input type="text" bind:value={number} /></FormField>
+          </div>
+          <FormField label="Pages">
+            <input type="text" bind:value={pages} placeholder="e.g. 123–145" />
+          </FormField>
+          <FormField label="Series"><input type="text" bind:value={series} /></FormField>
+        </div>
+      </fieldset>
+
+      <!-- Publisher -->
+      <fieldset class="group">
+        <legend class="group-legend">Publisher</legend>
+        <div class="form-grid">
+          <FormField label="Publisher">
+            <input type="text" bind:value={publisher} />
+          </FormField>
+          <FormField label="Address / City">
+            <input type="text" bind:value={address} />
+          </FormField>
+          <FormField label="Edition">
+            <input type="text" bind:value={edition} placeholder='e.g. "2nd"' />
+          </FormField>
+        </div>
+      </fieldset>
+
+      <!-- Links -->
+      <fieldset class="group">
+        <legend class="group-legend">Links</legend>
+        <div class="form-grid">
+          <FormField label="DOI">
+            <input type="text" bind:value={doi} placeholder="10.xxxx/xxxxx" />
+          </FormField>
+          <FormField label="URL">
+            <input type="url" bind:value={url} placeholder="https://…" />
+          </FormField>
+        </div>
+      </fieldset>
+
+      <!-- Extra -->
+      <fieldset class="group">
+        <legend class="group-legend">Extra</legend>
+        <div class="form-grid">
+          <FormField label="Bibliographic note">
+            <input type="text" bind:value={note} placeholder="BibTeX note field" />
+          </FormField>
+          <FormField label="Categories">
+            <TagInput bind:tags={categories} placeholder="Tag, press Enter…" />
+          </FormField>
+          <FormField label="Citation Count">
+            <input type="number" bind:value={citationCount} min="0" />
+          </FormField>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <Button variant="outlined" onclick={() => goto(`/papers/${id}`)}>Cancel</Button>
+        <Button type="submit" loading={saving}>Save Changes</Button>
       </div>
     </form>
   {/if}
 </div>
 
 <style>
-  .page { max-width: 100%; overflow-x: hidden; }
-  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
-  .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; }
+  .page { max-width: 760px; overflow-x: hidden; }
+  .page-header { margin-bottom: 24px; }
+  .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; display: block; margin-bottom: 8px; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }
   .loading { display: flex; justify-content: center; padding: 80px; }
 
-  .form { background: var(--color-surface-0); border: 1px solid var(--color-surface-3); border-radius: 12px; padding: 28px; width: 100%; box-sizing: border-box; }
-  .form-grid { display: flex; flex-direction: column; gap: 18px; }
-  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form { display: flex; flex-direction: column; gap: 20px; }
 
-  @media (max-width: 1019px) {
-    .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .form { padding: 16px 14px; border-radius: 8px; }
-    .row-2 { grid-template-columns: 1fr; }
+  .group {
+    border: 1px solid var(--color-surface-3); border-radius: 10px; padding: 20px;
+    background: var(--color-surface-0);
+  }
+  .group-legend {
+    padding: 0 8px; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--color-text-secondary);
   }
 
-  :global(.form textarea) {
+  .form-grid { display: flex; flex-direction: column; gap: 16px; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  select {
+    width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--color-surface-3);
+    background: var(--color-surface-0); color: var(--color-text-primary);
+    font-size: 0.875rem; font-family: inherit; outline: none;
+    transition: border-color var(--transition-standard);
+    text-transform: capitalize;
+  }
+  select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-subtle); }
+
+  .input-with-action { display: flex; gap: 8px; }
+  .input-with-action input { flex: 1; }
+  .auto-btn {
+    padding: 0 12px; border-radius: 6px; border: 1px solid var(--color-surface-3);
+    background: var(--color-surface-1); color: var(--color-text-secondary);
+    font-size: 0.8125rem; cursor: pointer; white-space: nowrap;
+    transition: background var(--transition-standard);
+  }
+  .auto-btn:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+
+  :global(.group input[type="text"]),
+  :global(.group input[type="url"]),
+  :global(.group input[type="number"]) {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    border: 1px solid var(--color-surface-3); background: var(--color-surface-0);
+    color: var(--color-text-primary); font-size: 0.875rem; font-family: inherit; outline: none;
+    box-sizing: border-box;
+  }
+  :global(.group input:focus) { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-subtle); }
+  :global(.group textarea) {
     width: 100%; padding: 8px 12px; border-radius: 6px; resize: vertical;
     border: 1px solid var(--color-surface-3); background: var(--color-surface-0);
     color: var(--color-text-primary); font-size: 0.875rem; font-family: inherit; outline: none;
+    box-sizing: border-box;
   }
-  :global(.form textarea:focus) { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-subtle); }
+  :global(.group textarea:focus) { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-subtle); }
 
+  .form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+  @media (max-width: 1019px) {
+    .page { max-width: 100%; }
+    .group { padding: 14px 12px; }
+    .row-2 { grid-template-columns: 1fr; }
+  }
 </style>

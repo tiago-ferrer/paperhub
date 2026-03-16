@@ -15,8 +15,8 @@
     const data = $page.data as { paper?: Paper; notebook?: Notebook; post?: NotebookPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project }
 
     if (data.paper && part === data.paper.id) {
-      const firstAuthor = data.paper.authors[0]?.split(' ').pop() ?? ''
-      const extra = data.paper.authors.length > 1 ? ' et al.' : ''
+      const firstAuthor = data.paper.author?.[0]?.split(' ').pop() ?? ''
+      const extra = (data.paper.author?.length ?? 0) > 1 ? ' et al.' : ''
       return `${firstAuthor}${extra}, ${data.paper.year}`
     }
 

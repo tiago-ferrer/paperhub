@@ -102,7 +102,7 @@
                 <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
               </div>
               <div class="item-meta">
-                <span>{paper.authors.slice(0, 2).join(', ')}{paper.authors.length > 2 ? ' et al.' : ''}</span>
+                <span>{(paper.author ?? []).slice(0, 2).join(', ')}{(paper.author?.length ?? 0) > 2 ? ' et al.' : ''}</span>
                 <span class="dot">·</span>
                 <span>{paper.year}</span>
                 <span class="dot">·</span>
