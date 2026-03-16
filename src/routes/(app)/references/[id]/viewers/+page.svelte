@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types'
   import { invalidateAll } from '$app/navigation'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { Viewer } from '$lib/types/viewer'
@@ -24,7 +24,7 @@
     addError = null
     adding = true
     try {
-      await papersApi.addViewer(data.paper.id, newViewer.trim())
+      await referencesApi.addViewer(data.reference.id, newViewer.trim())
       toast.success(`${newViewer} added as viewer`)
       newViewer = ''
       await invalidateAll()
@@ -42,7 +42,7 @@
   async function confirmRevoke() {
     if (!revokeTarget) return
     try {
-      await papersApi.removeViewer(data.paper.id, revokeTarget.viewer_username)
+      await referencesApi.removeViewer(data.reference.id, revokeTarget.viewer_username)
       toast.success(`${revokeTarget.viewer_username} removed`)
       revokeTarget = null
       await invalidateAll()
@@ -54,7 +54,7 @@
 
 <div class="page">
   <div class="page-header">
-    <a href="/papers/{data.paper.id}" class="back-link">← {data.paper.title}</a>
+    <a href="/references/{data.reference.id}" class="back-link">← {data.reference.title}</a>
     <h1>Manage Viewers</h1>
   </div>
 
@@ -106,7 +106,7 @@
 <ConfirmDialog
   open={!!revokeTarget}
   title="Revoke access?"
-  message={revokeTarget ? `${revokeTarget.viewer_username} will lose read access to this paper.` : ''}
+  message={revokeTarget ? `${revokeTarget.viewer_username} will lose read access to this reference.` : ''}
   confirmLabel="Revoke"
   onconfirm={confirmRevoke}
   oncancel={() => revokeTarget = null}

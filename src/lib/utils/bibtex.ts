@@ -1,4 +1,4 @@
-import type { BibTexEntryType, CreatePaperPayload } from '$lib/types/paper'
+import type { BibTexEntryType, CreateReferencePayload } from '$lib/types/reference'
 
 export interface ParsedBibTeX {
   entry_type: string
@@ -131,8 +131,8 @@ export function parseBibTeX(raw: string): ParsedBibTeX | null {
   }
 }
 
-/** Map a ParsedBibTeX to a CreatePaperPayload ready for the API */
-export function bibTeXToPayload(parsed: ParsedBibTeX): CreatePaperPayload {
+/** Map a ParsedBibTeX to a CreateReferencePayload ready for the API */
+export function bibTeXToPayload(parsed: ParsedBibTeX): CreateReferencePayload {
   const f = parsed.fields
 
   const entry_type: BibTexEntryType = VALID_TYPES.includes(parsed.entry_type as BibTexEntryType)

@@ -2,10 +2,10 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
   import { notebooksApi } from '$lib/api/notebooks'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
-  import type { Paper } from '$lib/types/paper'
+  import type { Reference } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import MarkdownContent from '$lib/components/ui/MarkdownContent.svelte'
@@ -21,7 +21,7 @@
   let errors    = $state<Record<string, string>>({})
   let mode      = $state<'edit' | 'preview'>('edit')
 
-  let papers        = $state<Paper[]>([])
+  let papers        = $state<Reference[]>([])
   let selectedPaperIds = $state<Set<string>>(new Set())
   let paperSearch   = $state('')
   let showPaperPicker = $state(false)
@@ -33,9 +33,9 @@
 
   onMount(async () => {
     try {
-      const res = await papersApi.list(0, 100)
+      const res = await referencesApi.list(0, 100)
       papers = res.items
-    } catch { /* papers list is optional */ }
+    } catch { /* references list is optional */ }
   })
 
   function validate() {

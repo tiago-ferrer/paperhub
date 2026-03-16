@@ -84,7 +84,7 @@
       return data.groups.find(g => g.id === item.entity_id)?.name ?? item.entity_id
     }
     if (item.type === 'PAPER') {
-      return data.papers.find(p => p.id === item.entity_id)?.title ?? item.entity_id
+      return data.references.find(p => p.id === item.entity_id)?.title ?? item.entity_id
     }
     if (item.type === 'KANBAN_BOARD') {
       return data.boards.find(b => b.id === item.entity_id)?.title ?? item.entity_id
@@ -96,7 +96,7 @@
   function entityHref(item: ProjectItem): string {
     if (item.type === 'NOTEBOOK') return `/notebooks/${item.entity_id}`
     if (item.type === 'TRANSCRIPTION_GROUP') return `/transcription/${item.entity_id}`
-    if (item.type === 'PAPER') return `/papers/${item.entity_id}`
+    if (item.type === 'PAPER') return `/references/${item.entity_id}`
     if (item.type === 'NOTEBOOK_POST') return `/notebooks/${item.parent_id}/posts/${item.entity_id}`
     if (item.type === 'TRANSCRIPTION') return `/transcription/${item.parent_id}/${item.entity_id}`
     if (item.type === 'KANBAN_BOARD') return `/kanban/${item.entity_id}`
@@ -366,7 +366,7 @@
         {/if}
 
       {:else if addType === 'PAPER'}
-        {#each data.papers as p}
+        {#each data.references as p}
           {@const alreadyAdded = addedIds.has(p.id)}
           <button
             class="entity-row"
@@ -380,8 +380,8 @@
             {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
           </button>
         {/each}
-        {#if data.papers.length === 0}
-          <p class="empty-list">No papers found.</p>
+        {#if data.references.length === 0}
+          <p class="empty-list">No references found.</p>
         {/if}
 
       {:else if addType === 'KANBAN_BOARD'}

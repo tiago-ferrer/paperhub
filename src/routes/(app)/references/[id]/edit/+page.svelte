@@ -1,11 +1,11 @@
 <script lang="ts">
   import { goto, invalidateAll } from '$app/navigation'
   import { page } from '$app/stores'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import { buildPatch } from '$lib/utils/diff'
-  import { BIBTEX_ENTRY_TYPES, type BibTexEntryType, type Paper } from '$lib/types/paper'
+  import { BIBTEX_ENTRY_TYPES, type BibTexEntryType, type Reference } from '$lib/types/reference'
   import FormField from '$lib/components/forms/FormField.svelte'
   import TagInput from '$lib/components/forms/TagInput.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
@@ -14,7 +14,7 @@
 
   const id = $page.params.id as string
 
-  let original = $state<Paper | null>(null)
+  let original = $state<Reference | null>(null)
   let loading  = $state(true)
   let saving   = $state(false)
   let errors   = $state<Record<string, string>>({})
@@ -60,7 +60,7 @@
 
   onMount(async () => {
     try {
-      const p = await papersApi.get(id)
+      const p = await referencesApi.get(id)
       original    = p
       entryType   = p.entry_type
       citationKey = p.citation_key ?? ''
@@ -85,8 +85,8 @@
       categories  = [...(p.categories ?? [])]
       citationCount = p.citation_count
     } catch {
-      toast.error('Failed to load paper')
-      goto('/papers')
+      toast.error('Failed to load reference')
+      goto('/references')
     } finally {
       loading = false
     }
@@ -129,7 +129,7 @@
       citation_count: citationCount,
     }
 
-    const patch = buildPatch(original, current as Partial<Paper>)
+    const patch = buildPatch(original, current as Partial<Reference>)
     if (!Object.keys(patch).length) {
       toast.info('No changes to save')
       return
@@ -137,10 +137,10 @@
 
     saving = true
     try {
-      await papersApi.patch(id, patch)
-      toast.success('Paper updated')
+      await referencesApi.patch(id, patch)
+      toast.success('Reference updated')
       await invalidateAll()
-      goto(`/papers/${id}`)
+      goto(`/references/${id}`)
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to update')
     } finally {
@@ -151,8 +151,8 @@
 
 <div class="page">
   <div class="page-header">
-    <a href="/papers/{id}" class="back-link">← Paper</a>
-    <h1>Edit Paper</h1>
+    <a href="/references/{id}" class="back-link">← Reference</a>
+    <h1>Edit Reference</h1>
   </div>
 
   {#if loading}
@@ -276,7 +276,7 @@
       </fieldset>
 
       <div class="form-actions">
-        <Button variant="outlined" onclick={() => goto(`/papers/${id}`)}>Cancel</Button>
+        <Button variant="outlined" onclick={() => goto(`/references/${id}`)}>Cancel</Button>
         <Button type="submit" loading={saving}>Save Changes</Button>
       </div>
     </form>
@@ -284,7 +284,7 @@
 </div>
 
 <style>
-  .page { max-width: 760px; overflow-x: hidden; }
+  .page { max-width: 100%; overflow-x: hidden; }
   .page-header { margin-bottom: 24px; }
   .back-link { font-size: 0.875rem; color: var(--color-primary); text-decoration: none; display: block; margin-bottom: 8px; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }

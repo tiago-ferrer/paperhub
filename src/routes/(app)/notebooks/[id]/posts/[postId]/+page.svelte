@@ -2,11 +2,11 @@
   import type { PageData } from './$types'
   import { goto, invalidateAll } from '$app/navigation'
   import { notebooksApi } from '$lib/api/notebooks'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { PostAttachment } from '$lib/types/notebook'
-  import type { Paper } from '$lib/types/paper'
+  import type { Reference } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
@@ -26,15 +26,15 @@
   let uploadingFile       = $state(false)
   let deleteAttachTarget  = $state<PostAttachment | null>(null)
 
-  let linkedPapers = $state<Paper[]>([])
+  let linkedPapers = $state<Reference[]>([])
 
   onMount(async () => {
     if (post.paper_ids?.length) {
       const results = await Promise.allSettled(
-        post.paper_ids.map(id => papersApi.get(id))
+        post.paper_ids.map(id => referencesApi.get(id))
       )
       linkedPapers = results
-        .filter((r): r is PromiseFulfilledResult<Paper> => r.status === 'fulfilled')
+        .filter((r): r is PromiseFulfilledResult<Reference> => r.status === 'fulfilled')
         .map(r => r.value)
     }
   })
@@ -144,10 +144,10 @@
                 <li class="paper-item">
                   <FileText size={16} />
                   <div class="paper-info">
-                    <a href="/papers/{paper.id}" class="paper-link">{paper.title}</a>
+                    <a href="/references/{paper.id}" class="paper-link">{paper.title}</a>
                     <span class="paper-meta">{paper.year} · {paper.journal}</span>
                   </div>
-                  <a href="/papers/{paper.id}" target="_blank" rel="noreferrer" class="icon-btn" title="Open paper">
+                  <a href="/references/{paper.id}" target="_blank" rel="noreferrer" class="icon-btn" title="Open reference">
                     <ExternalLink size={16} />
                   </a>
                 </li>

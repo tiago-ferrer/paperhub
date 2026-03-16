@@ -26,7 +26,7 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: 'Library',
     items: [
-      { label: 'Papers', href: '/papers', icon: FileText },
+      { label: 'References', href: '/references', icon: FileText },
       { label: 'Notebooks', href: '/notebooks', icon: NotebookPen },
       { label: 'Transcription', href: '/transcription', icon: Mic },
     ],

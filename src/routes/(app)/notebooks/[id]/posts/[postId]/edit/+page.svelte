@@ -2,11 +2,11 @@
   import { goto, invalidateAll } from '$app/navigation'
   import { page } from '$app/stores'
   import { notebooksApi } from '$lib/api/notebooks'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { NotebookPost } from '$lib/types/notebook'
-  import type { Paper } from '$lib/types/paper'
+  import type { Reference } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
@@ -30,7 +30,7 @@
   let title   = $state('')
   let content = $state('')
 
-  let papers           = $state<Paper[]>([])
+  let papers           = $state<Reference[]>([])
   let selectedPaperIds = $state<Set<string>>(new Set())
   let paperSearch      = $state('')
   let showPaperPicker  = $state(false)
@@ -46,7 +46,7 @@
     try {
       const [post, papersRes] = await Promise.all([
         notebooksApi.getPost(notebookId, postId),
-        papersApi.list(0, 100),
+        referencesApi.list(0, 100),
       ])
       original = post
       title    = post.title

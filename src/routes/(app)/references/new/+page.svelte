@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
-  import { BIBTEX_ENTRY_TYPES, type BibTexEntryType } from '$lib/types/paper'
+  import { BIBTEX_ENTRY_TYPES, type BibTexEntryType } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import TagInput from '$lib/components/forms/TagInput.svelte'
@@ -104,7 +104,7 @@
 
     saving = true
     try {
-      const paper = await papersApi.create({
+      const reference = await referencesApi.create({
         entry_type:     entryType,
         title:          title.trim(),
         citation_key:   citationKey.trim() || null,
@@ -128,10 +128,10 @@
         categories:     categories.length ? categories : null,
         citation_count: citationCount || null,
       })
-      toast.success('Paper created')
-      goto(`/papers/${paper.id}`)
+      toast.success('Reference created')
+      goto(`/references/${reference.id}`)
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to create paper')
+      toast.error(err instanceof ApiError ? err.message : 'Failed to create reference')
     } finally {
       saving = false
     }
@@ -140,8 +140,8 @@
 
 <div class="page">
   <div class="page-header">
-    <a href="/papers" class="back-link">← Papers</a>
-    <h1>New Paper</h1>
+    <a href="/references" class="back-link">← References</a>
+    <h1>New Reference</h1>
   </div>
 
   <form onsubmit={submit} class="form">
@@ -290,8 +290,8 @@
     </fieldset>
 
     <div class="form-actions">
-      <Button variant="outlined" onclick={() => goto('/papers')}>Cancel</Button>
-      <Button type="submit" loading={saving}>Create Paper</Button>
+      <Button variant="outlined" onclick={() => goto('/references')}>Cancel</Button>
+      <Button type="submit" loading={saving}>Create Reference</Button>
     </div>
   </form>
 </div>

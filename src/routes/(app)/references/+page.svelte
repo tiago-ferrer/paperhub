@@ -1,17 +1,17 @@
 <script lang="ts">
   import type { PageData } from './$types'
   import { goto, invalidateAll } from '$app/navigation'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
-  import type { Paper } from '$lib/types/paper'
+  import type { Reference } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
-  import FromBibTexModal from '$lib/components/papers/FromBibTexModal.svelte'
+  import FromBibTexModal from '$lib/components/references/FromBibTexModal.svelte'
   import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3 } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
@@ -27,7 +27,7 @@
   ] as const
   type ColKey = typeof COLUMNS[number]['key']
 
-  const LS_KEY = 'papers:columns'
+  const LS_KEY = 'references:columns'
   const ALL_KEYS = COLUMNS.map(c => c.key) as ColKey[]
 
   function loadCols(): Set<ColKey> {
@@ -59,28 +59,28 @@
   // ── Filters ────────────────────────────────────────────────────────────────
   type Filter = 'all' | 'owner' | 'shared'
   let filter = $state<Filter>('all')
-  let deleteTarget = $state<Paper | null>(null)
+  let deleteTarget = $state<Reference | null>(null)
   let deleting = $state(false)
   let showFromBibTex = $state(false)
 
   const filtered = $derived.by(() => {
-    const items = data.papers.items
+    const items = data.references.items
     if (filter === 'owner')  return items.filter(p => p.role === 'OWNER')
     if (filter === 'shared') return items.filter(p => p.role === 'VIEWER')
     return items
   })
 
   // Venue: journal > booktitle > publisher > —
-  function venue(paper: Paper): string {
-    return paper.journal ?? paper.booktitle ?? paper.publisher ?? '—'
+  function venue(reference: Reference): string {
+    return reference.journal ?? reference.booktitle ?? reference.publisher ?? '—'
   }
 
   async function confirmDelete() {
     if (!deleteTarget) return
     deleting = true
     try {
-      await papersApi.remove(deleteTarget.id)
-      toast.success('Paper deleted')
+      await referencesApi.remove(deleteTarget.id)
+      toast.success('Reference deleted')
       deleteTarget = null
       await invalidateAll()
     } catch (e) {
@@ -97,10 +97,10 @@
 
 <div class="page">
   <div class="page-header">
-    <h1>Papers</h1>
+    <h1>References</h1>
     <div class="header-actions">
       <Button variant="outlined" onclick={() => showFromBibTex = true}><BookMarked size={18} /> From BibTeX</Button>
-      <Button onclick={() => goto('/papers/new')}><Plus size={20} /> New Paper</Button>
+      <Button onclick={() => goto('/references/new')}><Plus size={20} /> New Reference</Button>
     </div>
   </div>
 
@@ -142,7 +142,7 @@
   </div>
 
   {#if filtered.length === 0}
-    <EmptyState title="No papers found" message="Create your first paper to get started." />
+    <EmptyState title="No references found" message="Create your first reference to get started." />
   {:else}
     <!-- Desktop table -->
     <div class="table-wrapper desktop-only">
@@ -160,27 +160,27 @@
           </tr>
         </thead>
         <tbody>
-          {#each filtered as paper}
+          {#each filtered as reference}
             <tr>
-              <td class="title-cell"><a href="/papers/{paper.id}" class="paper-link">{paper.title}</a></td>
-              {#if col('type')}<td><span class="entry-badge">{paper.entry_type}</span></td>{/if}
-              {#if col('authors')}<td class="authors-cell">{paper.author?.join(', ') ?? '—'}</td>{/if}
-              {#if col('year')}<td>{paper.year ?? '—'}</td>{/if}
-              {#if col('venue')}<td class="journal-cell">{venue(paper)}</td>{/if}
-              {#if col('role')}<td><StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} /></td>{/if}
-              {#if col('updated')}<td class="date-cell">{formatDate(paper.updated_at)}</td>{/if}
+              <td class="title-cell"><a href="/references/{reference.id}" class="paper-link">{reference.title}</a></td>
+              {#if col('type')}<td><span class="entry-badge">{reference.entry_type}</span></td>{/if}
+              {#if col('authors')}<td class="authors-cell">{reference.author?.join(', ') ?? '—'}</td>{/if}
+              {#if col('year')}<td>{reference.year ?? '—'}</td>{/if}
+              {#if col('venue')}<td class="journal-cell">{venue(reference)}</td>{/if}
+              {#if col('role')}<td><StatusChip label={reference.role} variant={reference.role === 'OWNER' ? 'info' : 'neutral'} /></td>{/if}
+              {#if col('updated')}<td class="date-cell">{formatDate(reference.updated_at)}</td>{/if}
               <td class="actions-cell">
-                <button class="icon-btn" title="View" onclick={() => goto(`/papers/${paper.id}`)}>
+                <button class="icon-btn" title="View" onclick={() => goto(`/references/${reference.id}`)}>
                   <Eye size={20} />
                 </button>
-                {#if paper.role === 'OWNER'}
-                  <button class="icon-btn" title="Edit" onclick={() => goto(`/papers/${paper.id}/edit`)}>
+                {#if reference.role === 'OWNER'}
+                  <button class="icon-btn" title="Edit" onclick={() => goto(`/references/${reference.id}/edit`)}>
                     <Pencil size={20} />
                   </button>
-                  <button class="icon-btn" title="Viewers" onclick={() => goto(`/papers/${paper.id}/viewers`)}>
+                  <button class="icon-btn" title="Viewers" onclick={() => goto(`/references/${reference.id}/viewers`)}>
                     <Users size={20} />
                   </button>
-                  <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = paper}>
+                  <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = reference}>
                     <Trash2 size={20} />
                   </button>
                 {/if}
@@ -193,32 +193,32 @@
 
     <!-- Mobile cards -->
     <div class="card-list mobile-only">
-      {#each filtered as paper}
-        <div class="paper-card" onclick={() => goto(`/papers/${paper.id}`)}>
+      {#each filtered as reference}
+        <div class="paper-card" onclick={() => goto(`/references/${reference.id}`)}>
           <div class="card-top">
-            <a href="/papers/{paper.id}" class="paper-link card-title">{paper.title}</a>
+            <a href="/references/{reference.id}" class="paper-link card-title">{reference.title}</a>
             <div class="card-badges">
-              <span class="entry-badge">{paper.entry_type}</span>
-              <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
+              <span class="entry-badge">{reference.entry_type}</span>
+              <StatusChip label={reference.role} variant={reference.role === 'OWNER' ? 'info' : 'neutral'} />
             </div>
           </div>
           <div class="card-meta">
-            {#if paper.author?.length}
-              <span class="card-authors">{paper.author[0]}{paper.author.length > 1 ? ' et al.' : ''}</span>
+            {#if reference.author?.length}
+              <span class="card-authors">{reference.author[0]}{reference.author.length > 1 ? ' et al.' : ''}</span>
               <span class="dot">·</span>
             {/if}
-            <span>{paper.year ?? '—'}</span>
+            <span>{reference.year ?? '—'}</span>
             <span class="dot">·</span>
-            <span class="card-journal">{venue(paper)}</span>
+            <span class="card-journal">{venue(reference)}</span>
           </div>
           <div class="card-footer">
-            <span class="card-date">{formatDate(paper.updated_at)}</span>
+            <span class="card-date">{formatDate(reference.updated_at)}</span>
             <div class="card-actions" onclick={(e) => e.stopPropagation()}>
-              {#if paper.role === 'OWNER'}
-                <button class="icon-btn" title="Edit" onclick={() => goto(`/papers/${paper.id}/edit`)}>
+              {#if reference.role === 'OWNER'}
+                <button class="icon-btn" title="Edit" onclick={() => goto(`/references/${reference.id}/edit`)}>
                   <Pencil size={20} />
                 </button>
-                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = paper}>
+                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = reference}>
                   <Trash2 size={20} />
                 </button>
               {/if}
@@ -230,13 +230,13 @@
 
     <Pagination
       page={data.page}
-      hasNext={!!data.papers.next_token}
-      nextToken={data.papers.next_token}
-      onprev={() => goto(`/papers?page=${Math.max(0, data.page - 1)}`)}
+      hasNext={!!data.references.next_token}
+      nextToken={data.references.next_token}
+      onprev={() => goto(`/references?page=${Math.max(0, data.page - 1)}`)}
       onnext={() => {
         const p = new URLSearchParams({ page: String(data.page + 1) })
-        if (data.papers.next_token) p.set('next_token', data.papers.next_token)
-        goto(`/papers?${p}`)
+        if (data.references.next_token) p.set('next_token', data.references.next_token)
+        goto(`/references?${p}`)
       }}
     />
   {/if}
@@ -246,7 +246,7 @@
 
 <ConfirmDialog
   open={!!deleteTarget}
-  title="Delete paper?"
+  title="Delete reference?"
   message="This action cannot be undone."
   confirmLabel="Delete"
   onconfirm={confirmDelete}

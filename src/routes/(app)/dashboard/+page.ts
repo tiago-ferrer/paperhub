@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types'
-import { makePapersApi } from '$lib/api/papers'
+import { makeReferencesApi } from '$lib/api/references'
 import { makeNotebooksApi } from '$lib/api/notebooks'
 import type { Notebook, NotebookPost } from '$lib/types/notebook'
 
@@ -8,8 +8,8 @@ export interface RecentPost { post: NotebookPost; notebook: Notebook }
 export const load: PageLoad = async ({ fetch }) => {
   const notebooksApi = makeNotebooksApi(fetch)
 
-  const [papers, notebooks] = await Promise.all([
-    makePapersApi(fetch).list(0, 3),
+  const [references, notebooks] = await Promise.all([
+    makeReferencesApi(fetch).list(0, 3),
     notebooksApi.list(0, 50),
   ])
 
@@ -31,5 +31,5 @@ export const load: PageLoad = async ({ fetch }) => {
     .sort((a, b) => new Date(b.post.created_at).getTime() - new Date(a.post.created_at).getTime())
     .slice(0, 3)
 
-  return { recentPapers: papers.items, notebookCount, totalPosts, latestPosts }
+  return { recentReferences: references.items, notebookCount, totalPosts, latestPosts }
 }

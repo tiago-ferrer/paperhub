@@ -9,7 +9,7 @@
 
   let { data }: { data: PageData } = $props()
 
-  const ownerCount = $derived(data.recentPapers.filter(p => p.role === 'OWNER').length)
+  const ownerCount = $derived(data.recentReferences.filter(p => p.role === 'OWNER').length)
 </script>
 
 <div class="page">
@@ -17,7 +17,7 @@
     <h1>Dashboard</h1>
     <div class="header-actions">
       <Button variant="outlined" onclick={() => goto('/notebooks/new')}><NotebookPen size={18} /> New Notebook</Button>
-      <Button onclick={() => goto('/papers/new')}><Plus size={18} /> New Paper</Button>
+      <Button onclick={() => goto('/references/new')}><Plus size={18} /> New Reference</Button>
     </div>
   </div>
 
@@ -25,8 +25,8 @@
     <div class="stat-card">
       <div class="stat-icon"><FileText size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{data.recentPapers.length}</p>
-        <p class="stat-label">Recent Papers</p>
+        <p class="stat-value">{data.recentReferences.length}</p>
+        <p class="stat-label">Recent References</p>
       </div>
     </div>
     <div class="stat-card">
@@ -83,34 +83,34 @@
       {/if}
     </div>
 
-    <!-- Recent papers -->
+    <!-- Recent references -->
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">Recent Papers</h2>
-        <a href="/papers" class="section-link">All papers →</a>
+        <h2 class="section-title">Recent References</h2>
+        <a href="/references" class="section-link">All references →</a>
       </div>
-      {#if data.recentPapers.length === 0}
+      {#if data.recentReferences.length === 0}
         <div class="empty">
-          <p>No papers yet. <a href="/papers/new">Add your first paper</a></p>
+          <p>No references yet. <a href="/references/new">Add your first reference</a></p>
         </div>
       {:else}
         <div class="item-cards">
-          {#each data.recentPapers as paper}
-            <a href="/papers/{paper.id}" class="item-card">
+          {#each data.recentReferences as reference}
+            <a href="/references/{reference.id}" class="item-card">
               <div class="item-card-top">
-                <span class="item-title">{paper.title}</span>
-                <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
+                <span class="item-title">{reference.title}</span>
+                <StatusChip label={reference.role} variant={reference.role === 'OWNER' ? 'info' : 'neutral'} />
               </div>
               <div class="item-meta">
-                <span>{(paper.author ?? []).slice(0, 2).join(', ')}{(paper.author?.length ?? 0) > 2 ? ' et al.' : ''}</span>
+                <span>{(reference.author ?? []).slice(0, 2).join(', ')}{(reference.author?.length ?? 0) > 2 ? ' et al.' : ''}</span>
                 <span class="dot">·</span>
-                <span>{paper.year}</span>
+                <span>{reference.year}</span>
                 <span class="dot">·</span>
-                <span class="journal">{paper.journal}</span>
+                <span class="journal">{reference.journal}</span>
               </div>
               <div class="item-footer">
                 <span></span>
-                <span class="item-date">{formatDate(paper.updated_at)}</span>
+                <span class="item-date">{formatDate(reference.updated_at)}</span>
               </div>
             </a>
           {/each}

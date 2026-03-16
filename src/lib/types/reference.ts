@@ -20,7 +20,7 @@ export const BIBTEX_ENTRY_TYPES: BibTexEntryType[] = [
   'proceedings', 'techreport', 'unpublished',
 ]
 
-export type PaperRole = 'OWNER' | 'VIEWER'
+export type ReferenceRole = 'OWNER' | 'VIEWER'
 
 export interface UserNote {
   id: string
@@ -39,10 +39,10 @@ export interface Attachment {
   deleted: boolean
 }
 
-export interface Paper {
+export interface Reference {
   id: string
   owner: string
-  role: PaperRole
+  role: ReferenceRole
 
   // BibTeX core
   entry_type: BibTexEntryType
@@ -84,7 +84,7 @@ export interface Paper {
   deleted: boolean
 }
 
-export interface CreatePaperPayload {
+export interface CreateReferencePayload {
   entry_type: BibTexEntryType
   title: string
   citation_key?: string | null
@@ -109,7 +109,7 @@ export interface CreatePaperPayload {
   citation_count?: number | null
 }
 
-export type PatchPaperPayload = Partial<CreatePaperPayload>
+export type PatchReferencePayload = Partial<CreateReferencePayload>
 
 export interface PageResult<T> {
   items: T[]

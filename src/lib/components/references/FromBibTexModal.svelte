@@ -1,11 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
   import { scale, fade } from 'svelte/transition'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import { parseBibTeX, bibTeXToPayload } from '$lib/utils/bibtex'
-  import type { CreatePaperPayload } from '$lib/types/paper'
+  import type { CreateReferencePayload } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import { X, AlertCircle } from 'lucide-svelte'
 
@@ -24,7 +24,7 @@
     return parseBibTeX(raw)
   })
 
-  const payload = $derived.by((): CreatePaperPayload | null => {
+  const payload = $derived.by((): CreateReferencePayload | null => {
     if (!parsed) return null
     return bibTeXToPayload(parsed)
   })
@@ -51,12 +51,12 @@
     if (!payload) return
     saving = true
     try {
-      const paper = await papersApi.create(payload)
-      toast.success('Paper created')
+      const reference = await referencesApi.create(payload)
+      toast.success('Reference created')
       handleClose()
-      goto(`/papers/${paper.id}`)
+      goto(`/references/${reference.id}`)
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Failed to create paper')
+      toast.error(e instanceof ApiError ? e.message : 'Failed to create reference')
     } finally {
       saving = false
     }
@@ -143,7 +143,7 @@
       <div class="modal-footer">
         <Button variant="text" onclick={handleClose}>Cancel</Button>
         <Button loading={saving} disabled={!isValid} onclick={create}>
-          Create Paper
+          Create Reference
         </Button>
       </div>
     </div>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores'
   import { ChevronRight } from 'lucide-svelte'
-  import type { Paper } from '$lib/types/paper'
+  import type { Reference } from '$lib/types/reference'
   import type { Notebook, NotebookPost } from '$lib/types/notebook'
   import type { KanbanBoard } from '$lib/types/kanban'
   import type { TranscriptionGroup, Transcription } from '$lib/types/transcription'
@@ -12,12 +12,12 @@
   }
 
   function labelFor(part: string): string {
-    const data = $page.data as { paper?: Paper; notebook?: Notebook; post?: NotebookPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project }
+    const data = $page.data as { reference?: Reference; notebook?: Notebook; post?: NotebookPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project }
 
-    if (data.paper && part === data.paper.id) {
-      const firstAuthor = data.paper.author?.[0]?.split(' ').pop() ?? ''
-      const extra = (data.paper.author?.length ?? 0) > 1 ? ' et al.' : ''
-      return `${firstAuthor}${extra}, ${data.paper.year}`
+    if (data.reference && part === data.reference.id) {
+      const firstAuthor = data.reference.author?.[0]?.split(' ').pop() ?? ''
+      const extra = (data.reference.author?.length ?? 0) > 1 ? ' et al.' : ''
+      return `${firstAuthor}${extra}, ${data.reference.year}`
     }
 
     if (data.notebook && part === data.notebook.id) {

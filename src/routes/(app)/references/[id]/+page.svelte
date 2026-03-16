@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types'
   import { goto, invalidateAll } from '$app/navigation'
-  import { papersApi } from '$lib/api/papers'
+  import { referencesApi } from '$lib/api/references'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import Button from '$lib/components/ui/Button.svelte'
@@ -13,10 +13,10 @@
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import { formatDate, formatBytes, formatDoi } from '$lib/utils/format'
   import { Pencil, Users, Plus, ExternalLink, Download, FileText, Trash2, Eye, FolderOpen } from 'lucide-svelte'
-  import type { Attachment } from '$lib/types/paper'
+  import type { Attachment } from '$lib/types/reference'
 
   let { data }: { data: PageData } = $props()
-  let paper = $derived(data.paper)
+  let reference = $derived(data.reference)
 
   let showAddToProject  = $state(false)
   let noteSlideOpen     = $state(false)
@@ -37,14 +37,14 @@
     }
   })
 
-  const activeNotes       = $derived((paper.notes ?? []).filter(n => !n.deleted))
-  const activeAttachments = $derived(paper.attachments.filter(a => !a.deleted))
+  const activeNotes       = $derived((reference.notes ?? []).filter(n => !n.deleted))
+  const activeAttachments = $derived(reference.attachments.filter(a => !a.deleted))
 
   async function viewPdf(attach: Attachment) {
     loadingPdfId = attach.id
     pdfUrl = null
     try {
-      pdfUrl = await papersApi.getDownloadUrl(paper.id, attach.id)
+      pdfUrl = await referencesApi.getDownloadUrl(reference.id, attach.id)
     } catch {
       toast.error('Failed to load file')
     } finally {
@@ -56,7 +56,7 @@
     if (!newNote.trim()) return
     savingNote = true
     try {
-      await papersApi.addNote(paper.id, newNote.trim())
+      await referencesApi.addNote(reference.id, newNote.trim())
       newNote = ''
       toast.success('Note added')
       noteSlideOpen = false
@@ -71,7 +71,7 @@
   async function deleteNote() {
     if (!deleteNoteTarget) return
     try {
-      await papersApi.deleteNote(paper.id, deleteNoteTarget)
+      await referencesApi.deleteNote(reference.id, deleteNoteTarget)
       toast.success('Note deleted')
       deleteNoteTarget = null
       await invalidateAll()
@@ -83,7 +83,7 @@
   async function uploadFile(file: File) {
     uploadingFile = true
     try {
-      await papersApi.upload(paper.id, file)
+      await referencesApi.upload(reference.id, file)
       toast.success(`${file.name} uploaded`)
       await invalidateAll()
     } catch (e) {
@@ -95,7 +95,7 @@
 
   async function downloadAttachment(attach: Attachment) {
     try {
-      const url = await papersApi.getDownloadUrl(paper.id, attach.id)
+      const url = await referencesApi.getDownloadUrl(reference.id, attach.id)
       window.open(url, '_blank')
     } catch {
       toast.error('Failed to download file')
@@ -105,7 +105,7 @@
   async function confirmDeleteAttachment() {
     if (!deleteAttachTarget) return
     try {
-      await papersApi.deleteAttachment(paper.id, deleteAttachTarget.id)
+      await referencesApi.deleteAttachment(reference.id, deleteAttachTarget.id)
       toast.success('Attachment deleted')
       deleteAttachTarget = null
       await invalidateAll()
@@ -118,25 +118,25 @@
 <div class="page">
   <div class="page-header">
     <div class="header-left">
-      <a href="/papers" class="back-link">← Papers</a>
+      <a href="/references" class="back-link">← References</a>
       <div class="title-row">
-        <span class="entry-badge">{paper.entry_type}</span>
-        <h1>{paper.title}</h1>
-        <StatusChip label={paper.role} variant={paper.role === 'OWNER' ? 'info' : 'neutral'} />
+        <span class="entry-badge">{reference.entry_type}</span>
+        <h1>{reference.title}</h1>
+        <StatusChip label={reference.role} variant={reference.role === 'OWNER' ? 'info' : 'neutral'} />
       </div>
-      {#if paper.citation_key}
-        <span class="citation-key">cite: {paper.citation_key}</span>
+      {#if reference.citation_key}
+        <span class="citation-key">cite: {reference.citation_key}</span>
       {/if}
     </div>
     <div class="header-actions">
       <Button variant="outlined" size="sm" onclick={() => showAddToProject = true}>
         <FolderOpen size={20} /><span class="btn-label"> Add to Project</span>
       </Button>
-      {#if paper.role === 'OWNER'}
-        <Button variant="outlined" size="sm" onclick={() => goto(`/papers/${paper.id}/viewers`)}>
+      {#if reference.role === 'OWNER'}
+        <Button variant="outlined" size="sm" onclick={() => goto(`/references/${reference.id}/viewers`)}>
           <Users size={20} /><span class="btn-label"> Viewers</span>
         </Button>
-        <Button variant="outlined" size="sm" onclick={() => goto(`/papers/${paper.id}/edit`)}>
+        <Button variant="outlined" size="sm" onclick={() => goto(`/references/${reference.id}/edit`)}>
           <Pencil size={20} /><span class="btn-label"> Edit</span>
         </Button>
       {/if}
@@ -149,70 +149,70 @@
       <div class="card">
         <h2 class="card-title">Metadata</h2>
         <div class="meta-grid">
-          {#if paper.author?.length}
+          {#if reference.author?.length}
             <span class="meta-label">Authors</span>
-            <span>{paper.author.join(', ')}</span>
+            <span>{reference.author.join(', ')}</span>
           {/if}
-          {#if paper.editor?.length}
+          {#if reference.editor?.length}
             <span class="meta-label">Editors</span>
-            <span>{paper.editor.join(', ')}</span>
+            <span>{reference.editor.join(', ')}</span>
           {/if}
-          {#if paper.year}
+          {#if reference.year}
             <span class="meta-label">Year</span>
-            <span>{paper.year}{paper.month ? ` (${paper.month})` : ''}</span>
+            <span>{reference.year}{reference.month ? ` (${reference.month})` : ''}</span>
           {/if}
-          {#if paper.journal}
+          {#if reference.journal}
             <span class="meta-label">Journal</span>
-            <span>{paper.journal}</span>
+            <span>{reference.journal}</span>
           {/if}
-          {#if paper.booktitle}
+          {#if reference.booktitle}
             <span class="meta-label">Booktitle</span>
-            <span>{paper.booktitle}</span>
+            <span>{reference.booktitle}</span>
           {/if}
-          {#if paper.publisher}
+          {#if reference.publisher}
             <span class="meta-label">Publisher</span>
-            <span>{paper.publisher}{paper.address ? `, ${paper.address}` : ''}</span>
+            <span>{reference.publisher}{reference.address ? `, ${reference.address}` : ''}</span>
           {/if}
-          {#if paper.volume}
+          {#if reference.volume}
             <span class="meta-label">Volume</span>
-            <span>{paper.volume}{paper.number ? ` (${paper.number})` : ''}</span>
+            <span>{reference.volume}{reference.number ? ` (${reference.number})` : ''}</span>
           {/if}
-          {#if !paper.volume && paper.number}
+          {#if !reference.volume && reference.number}
             <span class="meta-label">No.</span>
-            <span>{paper.number}</span>
+            <span>{reference.number}</span>
           {/if}
-          {#if paper.pages}
+          {#if reference.pages}
             <span class="meta-label">Pages</span>
-            <span>{paper.pages}</span>
+            <span>{reference.pages}</span>
           {/if}
-          {#if paper.series}
+          {#if reference.series}
             <span class="meta-label">Series</span>
-            <span>{paper.series}</span>
+            <span>{reference.series}</span>
           {/if}
-          {#if paper.edition}
+          {#if reference.edition}
             <span class="meta-label">Edition</span>
-            <span>{paper.edition}</span>
+            <span>{reference.edition}</span>
           {/if}
-          {#if paper.doi}
+          {#if reference.doi}
             <span class="meta-label">DOI</span>
-            <a href={formatDoi(paper.doi)} target="_blank" rel="noreferrer" class="doi-link">
-              {paper.doi} <ExternalLink size={16} />
+            <a href={formatDoi(reference.doi)} target="_blank" rel="noreferrer" class="doi-link">
+              {reference.doi} <ExternalLink size={16} />
             </a>
           {/if}
-          {#if paper.url}
+          {#if reference.url}
             <span class="meta-label">URL</span>
-            <a href={paper.url} target="_blank" rel="noreferrer" class="doi-link">
+            <a href={reference.url} target="_blank" rel="noreferrer" class="doi-link">
               Link <ExternalLink size={16} />
             </a>
           {/if}
-          {#if paper.citation_count}
+          {#if reference.citation_count}
             <span class="meta-label">Citations</span>
-            <span>{paper.citation_count.toLocaleString()}</span>
+            <span>{reference.citation_count.toLocaleString()}</span>
           {/if}
-          {#if paper.categories?.length}
+          {#if reference.categories?.length}
             <span class="meta-label">Categories</span>
             <div class="chip-list">
-              {#each paper.categories as cat}
+              {#each reference.categories as cat}
                 <span class="cat-chip">{cat}</span>
               {/each}
             </div>
@@ -220,21 +220,21 @@
         </div>
       </div>
 
-      {#if paper.abstract}
+      {#if reference.abstract}
         <div class="card">
           <h2 class="card-title">Abstract</h2>
-          <p class="abstract">{paper.abstract}</p>
+          <p class="abstract">{reference.abstract}</p>
         </div>
       {/if}
 
-      {#if paper.note}
+      {#if reference.note}
         <div class="card">
           <h2 class="card-title">Bibliographic note</h2>
-          <p class="bib-note">{paper.note}</p>
+          <p class="bib-note">{reference.note}</p>
         </div>
       {/if}
 
-      {#if paper.role === 'OWNER'}
+      {#if reference.role === 'OWNER'}
         <div class="card">
           <div class="card-header">
             <h2 class="card-title">My notes</h2>
@@ -263,7 +263,7 @@
       <div class="card">
         <div class="card-header">
           <h2 class="card-title">Attachments</h2>
-          {#if paper.role === 'OWNER'}
+          {#if reference.role === 'OWNER'}
             <FileUpload onfile={uploadFile} loading={uploadingFile} />
           {/if}
         </div>
@@ -288,7 +288,7 @@
                     <Eye size={20} />
                   </button>
                   <button class="icon-btn" onclick={() => downloadAttachment(attach)}><Download size={20} /></button>
-                  {#if paper.role === 'OWNER'}
+                  {#if reference.role === 'OWNER'}
                     <button class="icon-btn danger" onclick={() => deleteAttachTarget = attach}><Trash2 size={20} /></button>
                   {/if}
                 </div>
@@ -331,7 +331,7 @@
 <AddToProjectModal
   open={showAddToProject}
   entityType="PAPER"
-  entityId={paper.id}
+  entityId={reference.id}
   onclose={() => showAddToProject = false}
 />
 
