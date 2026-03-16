@@ -42,6 +42,8 @@
     <input type="password" bind:value={password} required autocomplete="current-password" />
   </FormField>
 
+  <div class="forgot-link"><a href="/forgot-password">Forgot password?</a></div>
+
   <Button type="submit" {loading} disabled={!username || !password}>Sign in</Button>
 </form>
 
@@ -58,4 +60,7 @@
   .form :global(.btn) { width: 100%; justify-content: center; }
   .footer { font-size: 0.875rem; color: var(--color-text-secondary); margin-top: 20px; text-align: center; }
   .footer a { color: var(--color-primary); text-decoration: none; }
+  .forgot-link { text-align: right; margin-top: -8px; }
+  .forgot-link a { font-size: 0.8125rem; color: var(--color-text-secondary); text-decoration: none; }
+  .forgot-link a:hover { color: var(--color-primary); }
 </style>

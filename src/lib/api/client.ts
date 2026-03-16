@@ -4,11 +4,16 @@ import { get } from 'svelte/store'
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export class ApiError extends Error {
+  fields?: Record<string, string>
   constructor(
     public status: number,
     public code: string,
     message: string,
-  ) { super(message) }
+    fields?: Record<string, string>,
+  ) {
+    super(message)
+    this.fields = fields
+  }
 }
 
 export function makeApi(fetchFn: typeof fetch = globalThis.fetch) {
@@ -41,10 +46,13 @@ export function makeApi(fetchFn: typeof fetch = globalThis.fetch) {
       console.error('[api] error response', res.status, text)
       let body: Record<string, unknown> = {}
       try { body = JSON.parse(text) } catch { /* not json */ }
-      throw new ApiError(res.status, String(body.error ?? 'UNKNOWN'), String(body.message ?? (text || 'Request failed')))
+      const fields = typeof body.fields === 'object' && body.fields !== null
+        ? body.fields as Record<string, string>
+        : undefined
+      throw new ApiError(res.status, String(body.error ?? 'UNKNOWN'), String(body.message ?? (text || 'Request failed')), fields)
     }
 
-    if (res.status === 204) return undefined as T
+    if (res.status === 204 || res.status === 202) return undefined as T
     return res.json() as Promise<T>
   }
 
