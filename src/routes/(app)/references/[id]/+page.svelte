@@ -7,7 +7,7 @@
   import Button from '$lib/components/ui/Button.svelte'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
@@ -335,19 +335,21 @@
   onclose={() => showAddToProject = false}
 />
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteNoteTarget}
   title="Delete note?"
   message="This note will be permanently removed."
+  confirmPhrase="I want to delete this note"
   confirmLabel="Delete"
   onconfirm={deleteNote}
   oncancel={() => deleteNoteTarget = null}
 />
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteAttachTarget}
   title="Delete attachment?"
   message="This file will be permanently removed."
+  confirmPhrase={`I want to delete ${deleteAttachTarget?.filename ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDeleteAttachment}
   oncancel={() => deleteAttachTarget = null}

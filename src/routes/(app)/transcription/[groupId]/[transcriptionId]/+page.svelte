@@ -10,7 +10,7 @@
   import LanguageSelector from '$lib/components/forms/LanguageSelector.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
   import MarkdownContent from '$lib/components/ui/MarkdownContent.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import { renderMarkdown, stripMarkdown } from '$lib/utils/markdown'
   import { formatDate } from '$lib/utils/format'
   import { Pencil, RotateCcw, Plus, Sparkles, Trash2, Eye, ChevronDown, ChevronRight, X, Download } from 'lucide-svelte'
@@ -565,22 +565,22 @@
   </div>
 </div>
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteNoteTarget}
   title="Delete note?"
   message="This note will be permanently deleted."
+  confirmPhrase={`I want to delete ${deleteNoteTarget?.title ?? ''}`}
   confirmLabel="Delete"
-  variant="danger"
   onconfirm={confirmDeleteNote}
   oncancel={() => deleteNoteTarget = null}
 />
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={deleteTranscriptionOpen}
   title="Delete recording?"
-  message="This recording, its transcript, and all notes will be soft-deleted."
+  message="This recording, its transcript, and all notes will be permanently deleted."
+  confirmPhrase={`I want to delete ${transcription.name}`}
   confirmLabel="Delete"
-  variant="danger"
   onconfirm={confirmDeleteTranscription}
   oncancel={() => deleteTranscriptionOpen = false}
 />

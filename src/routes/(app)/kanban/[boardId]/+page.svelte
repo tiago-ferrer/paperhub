@@ -9,6 +9,7 @@
   import Button from '$lib/components/ui/Button.svelte'
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import { Plus, Settings, Trash2, ChevronUp, ChevronDown, X, GripVertical, Check, Pencil, FolderOpen } from 'lucide-svelte'
 
@@ -633,10 +634,11 @@
 />
 
 <!-- Delete column confirm (has cards) -->
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteColTarget}
   title="Delete column with cards?"
-  message="This column has cards assigned to it. The cards will remain but lose their column assignment. Continue?"
+  message="This column has cards assigned to it. The cards will remain but lose their column assignment. This cannot be undone."
+  confirmPhrase={`I want to delete ${deleteColTarget?.name ?? ''}`}
   confirmLabel="Delete anyway"
   onconfirm={confirmDeleteCol}
   oncancel={() => deleteColTarget = null}

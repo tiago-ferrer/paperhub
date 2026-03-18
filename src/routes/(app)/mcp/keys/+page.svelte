@@ -4,12 +4,12 @@
   import { apiKeysApi } from '$lib/api/apikeys'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
-  import type { ApiKeyCreated, McpPrivilege } from '$lib/types/apikey'
+  import type { ApiKey, ApiKeyCreated, McpPrivilege } from '$lib/types/apikey'
   import Button from '$lib/components/ui/Button.svelte'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
   import { formatDate } from '$lib/utils/format'
@@ -22,7 +22,7 @@
   let newPrivilege = $state<McpPrivilege>('OWNER')
   let creating     = $state(false)
   let createdKey   = $state<ApiKeyCreated | null>(null)
-  let deleteTarget = $state<string | null>(null)
+  let deleteTarget = $state<ApiKey | null>(null)
 
   async function createKey(e: SubmitEvent) {
     e.preventDefault()
@@ -44,7 +44,7 @@
   async function confirmDelete() {
     if (!deleteTarget) return
     try {
-      await apiKeysApi.delete(deleteTarget)
+      await apiKeysApi.delete(deleteTarget.id)
       toast.success('API key deleted')
       deleteTarget = null
       await invalidateAll()
@@ -96,7 +96,7 @@
               <td><StatusChip label={key.privilege} variant={key.privilege === 'OWNER' ? 'info' : 'neutral'} /></td>
               <td class="date">{formatDate(key.created_at)}</td>
               <td>
-                <button class="icon-btn danger" onclick={() => deleteTarget = key.id}><Trash2 size={20} /></button>
+                <button class="icon-btn danger" onclick={() => deleteTarget = key}><Trash2 size={20} /></button>
               </td>
             </tr>
           {/each}
@@ -139,10 +139,11 @@
   </Modal>
 {/if}
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete API key?"
-  message="This key will be permanently revoked."
+  message="This key will be permanently revoked and cannot be recovered."
+  confirmPhrase={`I want to delete ${deleteTarget?.name ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}

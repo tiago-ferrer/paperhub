@@ -8,7 +8,7 @@
   import Button from '$lib/components/ui/Button.svelte'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
   import FromBibTexModal from '$lib/components/references/FromBibTexModal.svelte'
@@ -244,10 +244,11 @@
 
 <FromBibTexModal open={showFromBibTex} onclose={() => showFromBibTex = false} />
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete reference?"
   message="This action cannot be undone."
+  confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}

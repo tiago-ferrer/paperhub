@@ -8,7 +8,7 @@
   import Button from '$lib/components/ui/Button.svelte'
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import {
     Plus, Pencil, Trash2, GripVertical, Check, X,
@@ -816,10 +816,11 @@
 </Modal>
 
 <!-- Delete Confirm -->
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
-  title="Delete Task"
-  message={`Delete "${deleteTarget?.title}"? This cannot be undone.`}
+  title="Delete task?"
+  message="This task cannot be recovered once deleted."
+  confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}

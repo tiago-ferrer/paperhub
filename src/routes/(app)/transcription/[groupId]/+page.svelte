@@ -7,7 +7,7 @@
   import type { Transcription } from '$lib/types/transcription'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
   import { formatDate } from '$lib/utils/format'
@@ -162,12 +162,12 @@
   {/if}
 </div>
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete recording?"
-  message="This recording and its transcript will be soft-deleted."
+  message="This recording and its transcript will be permanently deleted."
+  confirmPhrase={`I want to delete ${deleteTarget?.name ?? ''}`}
   confirmLabel="Delete"
-  variant="danger"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}
 />

@@ -9,7 +9,7 @@
   import type { Reference } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import { formatDate, formatBytes } from '$lib/utils/format'
   import MarkdownContent from '$lib/components/ui/MarkdownContent.svelte'
   import { renderMarkdown } from '$lib/utils/markdown'
@@ -167,10 +167,11 @@
   </div>
 </div>
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteAttachTarget}
   title="Delete attachment?"
-  message="This file will be removed from the post."
+  message="This file will be permanently removed from the post."
+  confirmPhrase={`I want to delete ${deleteAttachTarget?.filename ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDeleteAttachment}
   oncancel={() => deleteAttachTarget = null}
