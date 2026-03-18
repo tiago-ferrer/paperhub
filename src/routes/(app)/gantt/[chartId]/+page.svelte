@@ -9,15 +9,17 @@
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import {
     Plus, Pencil, Trash2, GripVertical, Check, X,
-    GanttChart as GanttIcon, Calendar
+    GanttChart as GanttIcon, Calendar, FolderOpen
   } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
   // Scroll container — bound in template, used to center on today
   let scrollEl = $state<HTMLElement | null>(null)
+  let showAddToProject = $state(false)
 
   // ── Constants ────────────────────────────────────────────────────────────────
   const LABEL_W   = 220
@@ -437,6 +439,9 @@
           <button class="zoom-btn" class:active={zoom === z} onclick={() => zoom = z}>{z.charAt(0).toUpperCase() + z.slice(1)}</button>
         {/each}
       </div>
+      <Button variant="outlined" size="sm" onclick={() => showAddToProject = true}>
+        <FolderOpen size={16} /><span class="btn-label"> Add to Project</span>
+      </Button>
       <Button onclick={openAdd}>
         <Plus size={16} />
         Add Task
@@ -818,6 +823,13 @@
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}
+/>
+
+<AddToProjectModal
+  open={showAddToProject}
+  entityType="GANTT_CHART"
+  entityId={chart.id}
+  onclose={() => showAddToProject = false}
 />
 
 <style>
@@ -1383,5 +1395,9 @@
     padding-top: 4px;
     border-top: 1px solid var(--color-surface-2);
     margin-top: 4px;
+  }
+
+  @media (max-width: 1019px) {
+    .btn-label { display: none; }
   }
 </style>
