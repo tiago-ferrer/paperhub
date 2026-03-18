@@ -6,6 +6,8 @@ export interface GanttChart {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface GanttTask {
@@ -24,6 +26,8 @@ export interface GanttTask {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface CreateChartPayload {

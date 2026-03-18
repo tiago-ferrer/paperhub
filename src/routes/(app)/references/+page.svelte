@@ -5,6 +5,7 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { Reference } from '$lib/types/reference'
+  // References do not support a Recently Deleted view — restore via undo toast only
   import Button from '$lib/components/ui/Button.svelte'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
@@ -77,16 +78,32 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await referencesApi.remove(deleteTarget.id)
-      toast.success('Reference deleted')
-      deleteTarget = null
+      await referencesApi.remove(target.id)
+      let tid: string
+      tid = toast.success(`"${target.title}" deleted.`, {
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
+      })
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete')
     } finally {
       deleting = false
+    }
+  }
+
+  async function undoDelete(reference: Reference, toastId: string) {
+    toast.dismiss(toastId)
+    try {
+      await referencesApi.restore(reference.id)
+      toast.success(`"${reference.title}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this reference.')
     }
   }
 </script>
@@ -247,7 +264,7 @@
 <DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete reference?"
-  message="This action cannot be undone."
+  message="This reference will be permanently deleted in 7 days."
   confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}

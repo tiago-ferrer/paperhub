@@ -5,13 +5,14 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { GanttChart } from '$lib/types/gantt'
+  import { formatTtlCountdown, formatDeletedAgo, isTtlExpired } from '$lib/utils/ttl'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Pencil, Trash2 } from 'lucide-svelte'
+  import { Plus, Pencil, Trash2, RotateCcw } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
@@ -44,22 +45,58 @@
     }
   }
 
-  // ── Delete ───────────────────────────────────────────────────────────────────
+  // ── Split active / deleted ───────────────────────────────────────────────────
+  const activeCharts  = $derived(data.charts.items.filter(c => !c.deleted))
+  const deletedCharts = $derived(data.charts.items.filter(c => c.deleted))
+
+  // ── Delete with undo toast ───────────────────────────────────────────────────
   let deleteTarget = $state<GanttChart | null>(null)
   let deleting     = $state(false)
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await ganttApi.removeChart(deleteTarget.id)
-      toast.success('Chart deleted')
-      deleteTarget = null
+      await ganttApi.removeChart(target.id)
+      let tid: string
+      tid = toast.success(`"${target.title}" deleted.`, {
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
+      })
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Something went wrong, please try again')
     } finally {
       deleting = false
+    }
+  }
+
+  async function undoDelete(chart: GanttChart, toastId: string) {
+    toast.dismiss(toastId)
+    try {
+      await ganttApi.restoreChart(chart.id)
+      toast.success(`"${chart.title}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this chart.')
+    }
+  }
+
+  // ── Restore from recently deleted ───────────────────────────────────────────
+  let restoringIds = $state<Set<string>>(new Set())
+
+  async function restoreChart(chart: GanttChart) {
+    restoringIds = new Set([...restoringIds, chart.id])
+    try {
+      await ganttApi.restoreChart(chart.id)
+      toast.success(`"${chart.title}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this chart.')
+    } finally {
+      restoringIds = new Set([...restoringIds].filter(id => id !== chart.id))
     }
   }
 
@@ -75,7 +112,7 @@
     <h1>Gantt Charts</h1>
     <div class="header-actions">
       <button class="filter-chip" class:active={data.includeDeleted} onclick={toggleDeleted}>
-        Show deleted
+        Recently Deleted
       </button>
       <Button onclick={() => { newTitle = ''; newDesc = ''; newErrors = {}; newOpen = true }}>
         <Plus size={20} /> New Chart
@@ -83,22 +120,20 @@
     </div>
   </div>
 
-  {#if data.charts.items.length === 0}
+  {#if activeCharts.length === 0 && !data.includeDeleted}
     <EmptyState title="No charts yet" message="Create your first Gantt chart to start planning timelines." />
-  {:else}
+  {:else if activeCharts.length > 0}
     <div class="charts-grid">
-      {#each data.charts.items as chart}
+      {#each activeCharts as chart}
         <div
           class="chart-card"
-          class:deleted-card={chart.deleted}
-          onclick={() => !chart.deleted && goto(`/gantt/${chart.id}`)}
+          onclick={() => goto(`/gantt/${chart.id}`)}
           role="button"
-          tabindex={chart.deleted ? -1 : 0}
-          onkeydown={(e) => e.key === 'Enter' && !chart.deleted && goto(`/gantt/${chart.id}`)}
+          tabindex={0}
+          onkeydown={(e) => e.key === 'Enter' && goto(`/gantt/${chart.id}`)}
         >
           <div class="chart-card-top">
-            <span class="chart-title" class:deleted-text={chart.deleted}>{chart.title}</span>
-            {#if chart.deleted}<span class="deleted-badge">deleted</span>{/if}
+            <span class="chart-title">{chart.title}</span>
           </div>
           {#if chart.description}
             <p class="chart-desc">{chart.description}</p>
@@ -106,14 +141,12 @@
           <div class="chart-footer">
             <span class="chart-date">{formatDate(chart.updated_at)}</span>
             <div class="chart-actions" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
-              {#if !chart.deleted}
-                <button class="icon-btn" title="Open" onclick={() => goto(`/gantt/${chart.id}`)}>
-                  <Pencil size={16} />
-                </button>
-                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = chart}>
-                  <Trash2 size={16} />
-                </button>
-              {/if}
+              <button class="icon-btn" title="Open" onclick={() => goto(`/gantt/${chart.id}`)}>
+                <Pencil size={16} />
+              </button>
+              <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = chart}>
+                <Trash2 size={16} />
+              </button>
             </div>
           </div>
         </div>
@@ -122,7 +155,7 @@
 
     <Pagination
       page={data.page}
-      hasNext={data.charts.items.length === 20}
+      hasNext={activeCharts.length === 20}
       onprev={() => {
         const p = new URLSearchParams({ page: String(Math.max(0, data.page - 1)) })
         if (data.includeDeleted) p.set('includeDeleted', 'true')
@@ -134,6 +167,39 @@
         goto(`/gantt?${p}`)
       }}
     />
+  {/if}
+
+  <!-- Recently Deleted section -->
+  {#if data.includeDeleted}
+    <div class="recently-deleted">
+      <h2 class="section-heading">Recently Deleted</h2>
+      {#if deletedCharts.length === 0}
+        <p class="empty-deleted">No recently deleted charts.</p>
+      {:else}
+        <div class="deleted-list">
+          {#each deletedCharts as chart}
+            <div class="deleted-row">
+              <div class="deleted-info">
+                <span class="deleted-name">{chart.title}</span>
+                <span class="deleted-meta">{formatDeletedAgo(chart.deleted_at)}</span>
+                <span class="deleted-ttl" class:ttl-warning={chart.ttl_expiry && (chart.ttl_expiry * 1000 - Date.now()) < 2 * 86400000} class:ttl-danger={chart.ttl_expiry && (chart.ttl_expiry * 1000 - Date.now()) < 86400000}>
+                  {formatTtlCountdown(chart.ttl_expiry)}
+                </span>
+              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isTtlExpired(chart.ttl_expiry) || restoringIds.has(chart.id)}
+                loading={restoringIds.has(chart.id)}
+                onclick={() => restoreChart(chart)}
+              >
+                <RotateCcw size={14} /> Restore
+              </Button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -161,7 +227,7 @@
 <DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete chart?"
-  message="This chart and all its tasks will be permanently deleted."
+  message="This chart will be permanently deleted in 7 days. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
@@ -201,17 +267,9 @@
     gap: 8px;
   }
   .chart-card:hover { box-shadow: var(--shadow-2); border-color: var(--color-primary); }
-  .deleted-card { opacity: 0.55; cursor: default; }
-  .deleted-card:hover { box-shadow: none; border-color: var(--color-surface-3); }
 
   .chart-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .chart-title { font-size: 0.9375rem; font-weight: 500; }
-  .deleted-text { text-decoration: line-through; color: var(--color-text-disabled); }
-  .deleted-badge {
-    display: inline-block; padding: 1px 6px; border-radius: 10px;
-    font-size: 0.6875rem; background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error); font-weight: 500;
-  }
 
   .chart-desc {
     font-size: 0.8125rem; color: var(--color-text-secondary); margin: 0;
@@ -230,6 +288,24 @@
   }
   .icon-btn:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
   .icon-btn.danger:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); }
+
+  /* Recently Deleted */
+  .recently-deleted { margin-top: 40px; border-top: 1px solid var(--color-surface-3); padding-top: 24px; }
+  .section-heading { margin: 0 0 16px; font-size: 1rem; font-weight: 500; color: var(--color-text-secondary); }
+  .empty-deleted { font-size: 0.875rem; color: var(--color-text-disabled); margin: 0; }
+  .deleted-list { display: flex; flex-direction: column; gap: 2px; }
+  .deleted-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-surface-2);
+  }
+  .deleted-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .deleted-name { font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deleted-meta { font-size: 0.75rem; color: var(--color-text-disabled); }
+  .deleted-ttl { font-size: 0.75rem; color: var(--color-text-secondary); }
+  .deleted-ttl.ttl-warning { color: var(--color-warning); }
+  .deleted-ttl.ttl-danger  { color: var(--color-error); }
 
   /* Modal form */
   .modal-form { display: flex; flex-direction: column; gap: 16px; }

@@ -389,12 +389,29 @@
   // ── Delete task ──────────────────────────────────────────────────────────────
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await ganttApi.removeTask(chart.id, deleteTarget.id)
-      tasks = tasks.filter(t => t.id !== deleteTarget!.id)
-      toast.success('Task deleted')
-      deleteTarget = null
+      await ganttApi.removeTask(chart.id, target.id)
+      tasks = tasks.filter(t => t.id !== target.id)
+      let tid: string
+      tid = toast.success(`"${target.title}" deleted.`, {
+        duration: 8000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            toast.dismiss(tid)
+            try {
+              const restored = await ganttApi.restoreTask(chart.id, target.id)
+              tasks = [...tasks, restored]
+              toast.success(`"${target.title}" restored.`)
+            } catch (e) {
+              toast.error(e instanceof ApiError ? e.message : 'Could not restore this task.')
+            }
+          },
+        },
+      })
     } catch {
       toast.error('Something went wrong, please try again')
     } finally {

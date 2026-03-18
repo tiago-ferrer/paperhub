@@ -82,6 +82,8 @@ export interface Reference {
   notes: UserNote[] | null
   attachments: Attachment[]
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface CreateReferencePayload {

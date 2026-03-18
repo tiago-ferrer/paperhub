@@ -5,17 +5,22 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { KanbanBoard } from '$lib/types/kanban'
+  import { formatTtlCountdown, formatDeletedAgo, isTtlExpired } from '$lib/utils/ttl'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Pencil, Trash2, Columns3 } from 'lucide-svelte'
+  import { Plus, Pencil, Trash2, Columns3, RotateCcw } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
+  const activeBoards  = $derived(data.boards.items.filter(b => !b.deleted))
+  const deletedBoards = $derived(data.boards.items.filter(b => b.deleted))
+
   let deleteTarget = $state<KanbanBoard | null>(null)
   let deleting = $state(false)
+  let restoringIds = $state<Set<string>>(new Set())
 
   function toggleDeleted() {
     const params = new URLSearchParams()
@@ -25,16 +30,45 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await kanbanApi.removeBoard(deleteTarget.id)
-      toast.success('Board deleted')
-      deleteTarget = null
+      await kanbanApi.removeBoard(target.id)
+      let tid: string
+      tid = toast.success(`"${target.title}" deleted.`, {
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
+      })
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete')
     } finally {
       deleting = false
+    }
+  }
+
+  async function undoDelete(board: KanbanBoard, toastId: string) {
+    toast.dismiss(toastId)
+    try {
+      await kanbanApi.restoreBoard(board.id)
+      toast.success(`"${board.title}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this board.')
+    }
+  }
+
+  async function restoreBoard(board: KanbanBoard) {
+    restoringIds = new Set([...restoringIds, board.id])
+    try {
+      await kanbanApi.restoreBoard(board.id)
+      toast.success(`"${board.title}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this board.')
+    } finally {
+      restoringIds = new Set([...restoringIds].filter(id => id !== board.id))
     }
   }
 </script>
@@ -44,28 +78,26 @@
     <h1>Kanban Boards</h1>
     <div class="header-actions">
       <button class="filter-chip" class:active={data.includeDeleted} onclick={toggleDeleted}>
-        Show deleted
+        Recently Deleted
       </button>
       <Button onclick={() => goto('/kanban/new')}><Plus size={20} /> New Board</Button>
     </div>
   </div>
 
-  {#if data.boards.items.length === 0}
+  {#if activeBoards.length === 0 && !data.includeDeleted}
     <EmptyState title="No boards yet" message="Create your first Kanban board to start organising work." />
-  {:else}
+  {:else if activeBoards.length > 0}
     <div class="boards-grid">
-      {#each data.boards.items as board}
+      {#each activeBoards as board}
         <div
           class="board-card"
-          class:deleted-card={board.deleted}
-          onclick={() => !board.deleted && goto(`/kanban/${board.id}`)}
+          onclick={() => goto(`/kanban/${board.id}`)}
           role="button"
-          tabindex={board.deleted ? -1 : 0}
-          onkeydown={(e) => e.key === 'Enter' && !board.deleted && goto(`/kanban/${board.id}`)}
+          tabindex={0}
+          onkeydown={(e) => e.key === 'Enter' && goto(`/kanban/${board.id}`)}
         >
           <div class="board-card-top">
-            <span class="board-title" class:deleted-text={board.deleted}>{board.title}</span>
-            {#if board.deleted}<span class="deleted-badge">deleted</span>{/if}
+            <span class="board-title">{board.title}</span>
           </div>
           {#if board.description}
             <p class="board-desc">{board.description}</p>
@@ -78,14 +110,12 @@
             <div class="board-meta">
               <span class="board-date">{formatDate(board.updated_at)}</span>
               <div class="board-actions" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="presentation">
-                {#if !board.deleted}
-                  <button class="icon-btn" title="Edit" onclick={() => goto(`/kanban/${board.id}`)}>
-                    <Pencil size={16} />
-                  </button>
-                  <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = board}>
-                    <Trash2 size={16} />
-                  </button>
-                {/if}
+                <button class="icon-btn" title="Edit" onclick={() => goto(`/kanban/${board.id}`)}>
+                  <Pencil size={16} />
+                </button>
+                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = board}>
+                  <Trash2 size={16} />
+                </button>
               </div>
             </div>
           </div>
@@ -117,12 +147,45 @@
       }}
     />
   {/if}
+
+  <!-- Recently Deleted section -->
+  {#if data.includeDeleted}
+    <div class="recently-deleted">
+      <h2 class="section-heading">Recently Deleted</h2>
+      {#if deletedBoards.length === 0}
+        <p class="empty-deleted">No recently deleted boards.</p>
+      {:else}
+        <div class="deleted-list">
+          {#each deletedBoards as board}
+            <div class="deleted-row">
+              <div class="deleted-info">
+                <span class="deleted-name">{board.title}</span>
+                <span class="deleted-meta">{formatDeletedAgo(board.deleted_at)}</span>
+                <span class="deleted-ttl" class:ttl-warning={board.ttl_expiry && (board.ttl_expiry * 1000 - Date.now()) < 2 * 86400000} class:ttl-danger={board.ttl_expiry && (board.ttl_expiry * 1000 - Date.now()) < 86400000}>
+                  {formatTtlCountdown(board.ttl_expiry)}
+                </span>
+              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isTtlExpired(board.ttl_expiry) || restoringIds.has(board.id)}
+                loading={restoringIds.has(board.id)}
+                onclick={() => restoreBoard(board)}
+              >
+                <RotateCcw size={14} /> Restore
+              </Button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete board?"
-  message="This board and all its cards will be permanently deleted."
+  message="This board will be permanently deleted in 7 days. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
@@ -162,17 +225,9 @@
     gap: 8px;
   }
   .board-card:hover { box-shadow: var(--shadow-2); border-color: var(--color-primary); }
-  .deleted-card { opacity: 0.55; cursor: default; }
-  .deleted-card:hover { box-shadow: none; border-color: var(--color-surface-3); }
 
   .board-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .board-title { font-size: 0.9375rem; font-weight: 500; }
-  .deleted-text { text-decoration: line-through; color: var(--color-text-disabled); }
-  .deleted-badge {
-    display: inline-block; padding: 1px 6px; border-radius: 10px;
-    font-size: 0.6875rem; background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error); font-weight: 500;
-  }
 
   .board-desc {
     font-size: 0.8125rem; color: var(--color-text-secondary); margin: 0;
@@ -196,6 +251,23 @@
   }
   .icon-btn:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
   .icon-btn.danger:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); }
+
+  /* Recently Deleted */
+  .recently-deleted { margin-top: 40px; border-top: 1px solid var(--color-surface-3); padding-top: 24px; }
+  .section-heading { margin: 0 0 16px; font-size: 1rem; font-weight: 500; color: var(--color-text-secondary); }
+  .empty-deleted { font-size: 0.875rem; color: var(--color-text-disabled); margin: 0; }
+  .deleted-list { display: flex; flex-direction: column; gap: 2px; }
+  .deleted-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--color-surface-1); border: 1px solid var(--color-surface-2);
+  }
+  .deleted-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .deleted-name { font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deleted-meta { font-size: 0.75rem; color: var(--color-text-disabled); }
+  .deleted-ttl { font-size: 0.75rem; color: var(--color-text-secondary); }
+  .deleted-ttl.ttl-warning { color: var(--color-warning); }
+  .deleted-ttl.ttl-danger  { color: var(--color-error); }
 
   @media (max-width: 1019px) {
     .page-header { flex-direction: column; align-items: flex-start; gap: 10px; }

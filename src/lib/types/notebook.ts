@@ -19,6 +19,8 @@ export interface NotebookPost {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface Notebook {
@@ -29,6 +31,8 @@ export interface Notebook {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface CreateNotebookPayload {

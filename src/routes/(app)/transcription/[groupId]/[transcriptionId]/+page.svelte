@@ -124,16 +124,33 @@
   let deletingTranscription   = $state(false)
 
   async function confirmDeleteTranscription() {
+    const target = { ...transcription }
     deletingTranscription = true
+    deleteTranscriptionOpen = false
     try {
-      await transcriptionApi.removeTranscription(transcription.group_id, transcription.id)
-      toast.success('Recording deleted')
-      goto(`/transcription/${transcription.group_id}`)
+      await transcriptionApi.removeTranscription(target.group_id, target.id)
+      goto(`/transcription/${target.group_id}`)
+      let tid: string
+      tid = toast.success(`"${target.name}" deleted.`, {
+        duration: 8000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            toast.dismiss(tid)
+            try {
+              await transcriptionApi.restoreTranscription(target.group_id, target.id)
+              toast.success(`"${target.name}" restored.`)
+              goto(`/transcription/${target.group_id}/${target.id}`)
+            } catch (err) {
+              toast.error(err instanceof ApiError ? err.message : 'Could not restore this recording.')
+            }
+          },
+        },
+      })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to delete')
     } finally {
       deletingTranscription = false
-      deleteTranscriptionOpen = false
     }
   }
 
@@ -271,15 +288,31 @@
 
   async function confirmDeleteNote() {
     if (!deleteNoteTarget) return
+    const target = deleteNoteTarget
+    deleteNoteTarget = null
     try {
-      await transcriptionApi.removeNote(transcription.group_id, transcription.id, deleteNoteTarget.id)
-      notes = notes.filter(n => n.id !== deleteNoteTarget!.id)
-      if (selectedNote?.id === deleteNoteTarget.id) selectedNote = null
-      deleteNoteTarget = null
-      toast.success('Note deleted')
+      await transcriptionApi.removeNote(transcription.group_id, transcription.id, target.id)
+      notes = notes.filter(n => n.id !== target.id)
+      if (selectedNote?.id === target.id) selectedNote = null
+      let tid: string
+      tid = toast.success(`"${target.title}" deleted.`, {
+        duration: 8000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            toast.dismiss(tid)
+            try {
+              const restored = await transcriptionApi.restoreNote(transcription.group_id, transcription.id, target.id)
+              notes = [restored, ...notes]
+              toast.success(`"${target.title}" restored.`)
+            } catch (err) {
+              toast.error(err instanceof ApiError ? err.message : 'Could not restore this note.')
+            }
+          },
+        },
+      })
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Failed to delete note')
-      deleteNoteTarget = null
     }
   }
 </script>
@@ -568,7 +601,7 @@
 <DestructiveConfirmDialog
   open={!!deleteNoteTarget}
   title="Delete note?"
-  message="This note will be permanently deleted."
+  message="This note will be permanently deleted in 7 days. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${deleteNoteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDeleteNote}
@@ -578,7 +611,7 @@
 <DestructiveConfirmDialog
   open={deleteTranscriptionOpen}
   title="Delete recording?"
-  message="This recording, its transcript, and all notes will be permanently deleted."
+  message="This recording will be permanently deleted in 7 days. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${transcription.name}`}
   confirmLabel="Delete"
   onconfirm={confirmDeleteTranscription}

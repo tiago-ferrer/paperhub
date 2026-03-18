@@ -10,9 +10,9 @@
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
-  import { formatDate } from '$lib/utils/format'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
-  import { Plus, Pencil, Trash2, Mic, FolderOpen } from 'lucide-svelte'
+  import { Plus, Pencil, Trash2, Mic, FolderOpen, RotateCcw } from 'lucide-svelte'
+  import { formatTtlCountdown, ttlUrgency, isTtlExpired, formatDeletedAgo } from '$lib/utils/ttl'
 
   let { data }: { data: PageData } = $props()
   let group = $derived(data.group)
@@ -21,13 +21,17 @@
   let deleteTarget = $state<Transcription | null>(null)
   let deleting = $state(false)
   let showAddToProject = $state(false)
+  let restoringIds = $state<Set<string>>(new Set())
+
+  const activeTranscriptions = $derived(transcriptions.filter(t => !t.deleted))
+  const deletedTranscriptions = $derived(transcriptions.filter(t => t.deleted))
 
   // Keep list in sync when data prop changes (navigating pages)
   $effect(() => { transcriptions = [...data.transcriptions.items] })
 
   // Poll any PROCESSING items every 5 s
   $effect(() => {
-    const processingIds = transcriptions
+    const processingIds = activeTranscriptions
       .filter(t => t.transcript_status === 'PROCESSING')
       .map(t => t.id)
     if (processingIds.length === 0) return
@@ -52,16 +56,45 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await transcriptionApi.removeTranscription(group.id, deleteTarget.id)
-      toast.success('Transcription deleted')
-      deleteTarget = null
+      await transcriptionApi.removeTranscription(group.id, target.id)
+      let tid: string
+      tid = toast.success(`"${target.name}" deleted.`, {
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
+      })
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete')
     } finally {
       deleting = false
+    }
+  }
+
+  async function undoDelete(transcription: Transcription, toastId: string) {
+    toast.dismiss(toastId)
+    try {
+      await transcriptionApi.restoreTranscription(group.id, transcription.id)
+      toast.success(`"${transcription.name}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this recording.')
+    }
+  }
+
+  async function restoreTranscription(rec: Transcription) {
+    restoringIds = new Set([...restoringIds, rec.id])
+    try {
+      await transcriptionApi.restoreTranscription(group.id, rec.id)
+      toast.success(`"${rec.name}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this recording.')
+    } finally {
+      restoringIds = new Set([...restoringIds].filter(id => id !== rec.id))
     }
   }
 </script>
@@ -78,7 +111,7 @@
     </div>
     <div class="header-actions">
       <button class="filter-chip" class:active={data.includeDeleted} onclick={toggleDeleted}>
-        Show deleted
+        Recently Deleted
       </button>
       <Button variant="outlined" size="sm" onclick={() => showAddToProject = true}>
         <FolderOpen size={18} /><span class="btn-label"> Add to Project</span>
@@ -94,7 +127,7 @@
     </div>
   </div>
 
-  {#if transcriptions.length === 0}
+  {#if activeTranscriptions.length === 0 && !data.includeDeleted}
     <EmptyState title="No recordings yet" message="Upload an audio file to start transcribing.">
       {#snippet actions()}
         {#if !group.deleted}
@@ -102,26 +135,22 @@
         {/if}
       {/snippet}
     </EmptyState>
-  {:else}
+  {:else if activeTranscriptions.length > 0}
     <div class="recording-list">
-      {#each transcriptions as rec}
+      {#each activeTranscriptions as rec}
         <div
           class="rec-card"
-          class:deleted-card={rec.deleted}
-          onclick={() => !rec.deleted && goto(`/transcription/${group.id}/${rec.id}`)}
+          onclick={() => goto(`/transcription/${group.id}/${rec.id}`)}
         >
           <div class="rec-header">
             <div class="rec-title-row">
               <Mic size={18} class="rec-icon" />
-              <span class="rec-title" class:deleted-text={rec.deleted}>{rec.name}</span>
-              {#if rec.deleted}<span class="deleted-badge">deleted</span>{/if}
+              <span class="rec-title">{rec.name}</span>
             </div>
             <div class="rec-actions" onclick={(e) => e.stopPropagation()}>
-              {#if !rec.deleted}
-                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = rec}>
-                  <Trash2 size={18} />
-                </button>
-              {/if}
+              <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = rec}>
+                <Trash2 size={18} />
+              </button>
             </div>
           </div>
           <div class="rec-footer">
@@ -160,12 +189,48 @@
       }}
     />
   {/if}
+
+  {#if data.includeDeleted}
+    <div class="recently-deleted">
+      <h2 class="section-heading">Recently Deleted</h2>
+      {#if deletedTranscriptions.length === 0}
+        <p class="empty-deleted">No recently deleted recordings.</p>
+      {:else}
+        <div class="deleted-list">
+          {#each deletedTranscriptions as rec}
+            <div class="deleted-row">
+              <div class="deleted-info">
+                <span class="deleted-name">{rec.name}</span>
+                <span class="deleted-meta">{formatDeletedAgo(rec.deleted_at)}</span>
+                <span
+                  class="deleted-ttl"
+                  class:ttl-warning={ttlUrgency(rec.ttl_expiry) === 'warning'}
+                  class:ttl-danger={ttlUrgency(rec.ttl_expiry) === 'danger' || ttlUrgency(rec.ttl_expiry) === 'expired'}
+                >
+                  {formatTtlCountdown(rec.ttl_expiry)}
+                </span>
+              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isTtlExpired(rec.ttl_expiry) || restoringIds.has(rec.id)}
+                loading={restoringIds.has(rec.id)}
+                onclick={() => restoreTranscription(rec)}
+              >
+                <RotateCcw size={14} /> Restore
+              </Button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete recording?"
-  message="This recording and its transcript will be permanently deleted."
+  message="This recording will be permanently deleted in 7 days. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${deleteTarget?.name ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
@@ -210,13 +275,11 @@
     border-radius: 10px; padding: 14px 18px; cursor: pointer;
     transition: background var(--transition-standard);
   }
-  .rec-card:hover:not(.deleted-card) { background: var(--color-surface-1); }
-  .deleted-card { cursor: default; opacity: 0.6; }
+  .rec-card:hover { background: var(--color-surface-1); }
 
   .rec-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
   .rec-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .rec-title { font-size: 0.9375rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .deleted-text { text-decoration: line-through; color: var(--color-text-disabled); }
 
   .rec-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .rec-date { font-size: 0.8125rem; color: var(--color-text-secondary); }
@@ -241,6 +304,23 @@
   .icon-btn.danger:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); }
 
   :global(.rec-icon) { color: var(--color-text-secondary); flex-shrink: 0; }
+
+  /* Recently Deleted */
+  .recently-deleted { margin-top: 40px; }
+  .section-heading { font-size: 1rem; font-weight: 500; color: var(--color-text-secondary); margin: 0 0 12px; }
+  .empty-deleted { font-size: 0.875rem; color: var(--color-text-secondary); margin: 0; }
+  .deleted-list { display: flex; flex-direction: column; gap: 8px; }
+  .deleted-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--color-surface-0); border: 1px solid var(--color-surface-3);
+    border-radius: 8px; padding: 10px 14px;
+  }
+  .deleted-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .deleted-name { font-size: 0.9375rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-secondary); text-decoration: line-through; }
+  .deleted-meta { font-size: 0.75rem; color: var(--color-text-secondary); }
+  .deleted-ttl { font-size: 0.75rem; color: var(--color-text-secondary); }
+  .ttl-warning { color: var(--color-warning, #d97706); }
+  .ttl-danger  { color: var(--color-error); }
 
   @media (max-width: 1019px) {
     .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }

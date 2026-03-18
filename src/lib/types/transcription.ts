@@ -17,6 +17,8 @@ export interface TranscriptionGroup {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface Transcription {
@@ -31,6 +33,8 @@ export interface Transcription {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface TranscriptionNote {

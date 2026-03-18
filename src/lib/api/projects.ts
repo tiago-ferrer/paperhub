@@ -21,7 +21,8 @@ export function makeProjectsApi(fetchFn?: typeof fetch) {
     get:    (id: string)                               => a.get<Project>(`${BASE}/${id}`),
     create: (payload: CreateProjectPayload)            => a.post<Project>(BASE, payload),
     patch:  (id: string, payload: PatchProjectPayload) => a.patch<Project>(`${BASE}/${id}`, payload),
-    remove: (id: string)                               => a.delete<void>(`${BASE}/${id}`),
+    remove:  (id: string)                               => a.delete<void>(`${BASE}/${id}`),
+    restore: (id: string)                               => a.put<Project>(`${BASE}/${id}/restore`, {}),
 
     addItem:    (id: string, payload: AddProjectItemPayload) => a.post<ProjectItem>(`${BASE}/${id}/items`, payload),
     removeItem: (id: string, itemId: string)                 => a.delete<void>(`${BASE}/${id}/items/${itemId}`),

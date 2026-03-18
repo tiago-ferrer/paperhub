@@ -16,7 +16,7 @@
   let {
     open = false,
     title = 'Confirm deletion',
-    message = '',
+    message = 'This item will be permanently deleted in 7 days. You can restore it from Recently Deleted.',
     confirmPhrase,
     confirmLabel = 'Delete',
     onconfirm,

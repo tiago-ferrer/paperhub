@@ -240,12 +240,31 @@
 
   async function deleteCard() {
     if (!deleteCardTarget) return
+    const target = deleteCardTarget
+    deleteCardTarget = null
     try {
-      await kanbanApi.removeCard(board.id, deleteCardTarget.id)
-      const idx = allCards.findIndex(c => c.id === deleteCardTarget!.id)
+      await kanbanApi.removeCard(board.id, target.id)
+      const idx = allCards.findIndex(c => c.id === target.id)
       if (idx !== -1) allCards[idx] = { ...allCards[idx], deleted: true }
-      if (selectedCard?.id === deleteCardTarget.id) selectedCard = null
-      deleteCardTarget = null
+      if (selectedCard?.id === target.id) selectedCard = null
+      let tid: string
+      tid = toast.success(`"${target.title}" deleted.`, {
+        duration: 8000,
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            toast.dismiss(tid)
+            try {
+              const restored = await kanbanApi.restoreCard(board.id, target.id)
+              const i = allCards.findIndex(c => c.id === target.id)
+              if (i !== -1) allCards[i] = restored
+              toast.success(`"${target.title}" restored.`)
+            } catch (e) {
+              toast.error(e instanceof ApiError ? e.message : 'Could not restore this card.')
+            }
+          },
+        },
+      })
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete card')
     }
@@ -626,7 +645,7 @@
 <DestructiveConfirmDialog
   open={!!deleteCardTarget}
   title="Delete card?"
-  message="This card will be permanently deleted."
+  message="This card will be permanently deleted in 7 days. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${deleteCardTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={deleteCard}

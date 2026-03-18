@@ -23,7 +23,8 @@ export function makeGanttApi(fetchFn?: typeof fetch) {
     getChart:    (chartId: string)                               => a.get<GanttChart>(`${BASE}/charts/${chartId}`),
     createChart: (payload: CreateChartPayload)                   => a.post<GanttChart>(`${BASE}/charts`, payload),
     patchChart:  (chartId: string, payload: PatchChartPayload)   => a.patch<GanttChart>(`${BASE}/charts/${chartId}`, payload),
-    removeChart: (chartId: string)                               => a.delete<void>(`${BASE}/charts/${chartId}`),
+    removeChart:  (chartId: string)                               => a.delete<void>(`${BASE}/charts/${chartId}`),
+    restoreChart: (chartId: string)                               => a.put<GanttChart>(`${BASE}/charts/${chartId}/restore`, {}),
 
     // Tasks
     listTasks: (chartId: string, page = 0, size = 100, includeDeleted = false) => {
@@ -33,7 +34,8 @@ export function makeGanttApi(fetchFn?: typeof fetch) {
     getTask:    (chartId: string, taskId: string)                              => a.get<GanttTask>(`${BASE}/charts/${chartId}/tasks/${taskId}`),
     createTask: (chartId: string, payload: CreateTaskPayload)                  => a.post<GanttTask>(`${BASE}/charts/${chartId}/tasks`, payload),
     patchTask:  (chartId: string, taskId: string, payload: PatchTaskPayload)   => a.patch<GanttTask>(`${BASE}/charts/${chartId}/tasks/${taskId}`, payload),
-    removeTask: (chartId: string, taskId: string)                              => a.delete<void>(`${BASE}/charts/${chartId}/tasks/${taskId}`),
+    removeTask:  (chartId: string, taskId: string)                              => a.delete<void>(`${BASE}/charts/${chartId}/tasks/${taskId}`),
+    restoreTask: (chartId: string, taskId: string)                              => a.put<GanttTask>(`${BASE}/charts/${chartId}/tasks/${taskId}/restore`, {}),
   }
 }
 

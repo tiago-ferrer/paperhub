@@ -6,17 +6,22 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { TranscriptionGroup } from '$lib/types/transcription'
+  import { formatTtlCountdown, formatDeletedAgo, isTtlExpired } from '$lib/utils/ttl'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Pencil, Trash2, Mic } from 'lucide-svelte'
+  import { Plus, Pencil, Trash2, Mic, RotateCcw } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
+  const activeGroups  = $derived(data.groups.items.filter(g => !g.deleted))
+  const deletedGroups = $derived(data.groups.items.filter(g => g.deleted))
+
   let deleteTarget = $state<TranscriptionGroup | null>(null)
   let deleting = $state(false)
+  let restoringIds = $state<Set<string>>(new Set())
 
   function toggleDeleted() {
     const params = new URLSearchParams()
@@ -26,17 +31,48 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await transcriptionApi.removeGroup(deleteTarget.id)
-      toast.success('Group deleted')
-      deleteTarget = null
+      await transcriptionApi.removeGroup(target.id)
+      let tid: string
+      tid = toast.success(`"${target.name}" deleted.`, {
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
+      })
       await refreshTranscriptionGroups()
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete group')
     } finally {
       deleting = false
+    }
+  }
+
+  async function undoDelete(group: TranscriptionGroup, toastId: string) {
+    toast.dismiss(toastId)
+    try {
+      await transcriptionApi.restoreGroup(group.id)
+      toast.success(`"${group.name}" restored.`)
+      await refreshTranscriptionGroups()
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this group.')
+    }
+  }
+
+  async function restoreGroup(group: TranscriptionGroup) {
+    restoringIds = new Set([...restoringIds, group.id])
+    try {
+      await transcriptionApi.restoreGroup(group.id)
+      toast.success(`"${group.name}" restored.`)
+      await refreshTranscriptionGroups()
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this group.')
+    } finally {
+      restoringIds = new Set([...restoringIds].filter(id => id !== group.id))
     }
   }
 </script>
@@ -46,19 +82,19 @@
     <h1>Transcription</h1>
     <div class="header-actions">
       <button class="filter-chip" class:active={data.includeDeleted} onclick={toggleDeleted}>
-        Show deleted
+        Recently Deleted
       </button>
       <Button onclick={() => goto('/transcription/new')}><Plus size={20} /> New Group</Button>
     </div>
   </div>
 
-  {#if data.groups.items.length === 0}
+  {#if activeGroups.length === 0 && !data.includeDeleted}
     <EmptyState title="No transcription groups yet" message="Create a group to start organising your audio recordings.">
       {#snippet actions()}
         <Button onclick={() => goto('/transcription/new')}><Plus size={20} /> New Group</Button>
       {/snippet}
     </EmptyState>
-  {:else}
+  {:else if activeGroups.length > 0}
     <!-- Desktop table -->
     <div class="table-wrapper desktop-only">
       <table class="data-table">
@@ -71,14 +107,13 @@
           </tr>
         </thead>
         <tbody>
-          {#each data.groups.items as group}
-            <tr class:deleted-row={group.deleted}>
+          {#each activeGroups as group}
+            <tr>
               <td class="name-cell">
-                <a href="/transcription/{group.id}" class="group-link" class:deleted-text={group.deleted}>
+                <a href="/transcription/{group.id}" class="group-link">
                   <Mic size={16} />
                   {group.name}
                 </a>
-                {#if group.deleted}<span class="deleted-badge">deleted</span>{/if}
               </td>
               <td class="desc-cell">{group.description ?? ''}</td>
               <td class="date-cell">{formatDate(group.updated_at)}</td>
@@ -86,14 +121,12 @@
                 <button class="icon-btn" title="Open" onclick={() => goto(`/transcription/${group.id}`)}>
                   <Mic size={20} />
                 </button>
-                {#if !group.deleted}
-                  <button class="icon-btn" title="Edit" onclick={() => goto(`/transcription/${group.id}/edit`)}>
-                    <Pencil size={20} />
-                  </button>
-                  <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = group}>
-                    <Trash2 size={20} />
-                  </button>
-                {/if}
+                <button class="icon-btn" title="Edit" onclick={() => goto(`/transcription/${group.id}/edit`)}>
+                  <Pencil size={20} />
+                </button>
+                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = group}>
+                  <Trash2 size={20} />
+                </button>
               </td>
             </tr>
           {/each}
@@ -103,11 +136,10 @@
 
     <!-- Mobile cards -->
     <div class="card-list mobile-only">
-      {#each data.groups.items as group}
-        <div class="group-card" class:deleted-card={group.deleted} onclick={() => goto(`/transcription/${group.id}`)}>
+      {#each activeGroups as group}
+        <div class="group-card" onclick={() => goto(`/transcription/${group.id}`)}>
           <div class="card-top">
-            <span class="card-title" class:deleted-text={group.deleted}>{group.name}</span>
-            {#if group.deleted}<span class="deleted-badge">deleted</span>{/if}
+            <span class="card-title">{group.name}</span>
           </div>
           {#if group.description}
             <p class="card-desc">{group.description}</p>
@@ -115,14 +147,12 @@
           <div class="card-footer">
             <span class="card-date">{formatDate(group.updated_at)}</span>
             <div class="card-actions" onclick={(e) => e.stopPropagation()}>
-              {#if !group.deleted}
-                <button class="icon-btn" title="Edit" onclick={() => goto(`/transcription/${group.id}/edit`)}>
-                  <Pencil size={20} />
-                </button>
-                <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = group}>
-                  <Trash2 size={20} />
-                </button>
-              {/if}
+              <button class="icon-btn" title="Edit" onclick={() => goto(`/transcription/${group.id}/edit`)}>
+                <Pencil size={20} />
+              </button>
+              <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = group}>
+                <Trash2 size={20} />
+              </button>
             </div>
           </div>
         </div>
@@ -146,14 +176,47 @@
       }}
     />
   {/if}
+
+  <!-- Recently Deleted section -->
+  {#if data.includeDeleted}
+    <div class="recently-deleted">
+      <h2 class="section-heading">Recently Deleted</h2>
+      {#if deletedGroups.length === 0}
+        <p class="empty-deleted">No recently deleted groups.</p>
+      {:else}
+        <div class="deleted-list">
+          {#each deletedGroups as group}
+            <div class="deleted-row">
+              <div class="deleted-info">
+                <span class="deleted-name">{group.name}</span>
+                <span class="deleted-meta">{formatDeletedAgo(group.deleted_at)}</span>
+                <span class="deleted-ttl" class:ttl-warning={group.ttl_expiry && (group.ttl_expiry * 1000 - Date.now()) < 2 * 86400000} class:ttl-danger={group.ttl_expiry && (group.ttl_expiry * 1000 - Date.now()) < 86400000}>
+                  {formatTtlCountdown(group.ttl_expiry)}
+                </span>
+              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isTtlExpired(group.ttl_expiry) || restoringIds.has(group.id)}
+                loading={restoringIds.has(group.id)}
+                onclick={() => restoreGroup(group)}
+              >
+                <RotateCcw size={14} /> Restore
+              </Button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete group?"
-  message="This group and all its transcriptions will be soft-deleted."
+  message="This group will be permanently deleted in 7 days. You can restore it from Recently Deleted."
+  confirmPhrase={`I want to delete ${deleteTarget?.name ?? ''}`}
   confirmLabel="Delete"
-  variant="danger"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}
 />
@@ -196,21 +259,12 @@
   .actions-col { width: 1%; }
   .actions-cell { display: flex; align-items: center; gap: 2px; }
 
-  .deleted-row td { opacity: 0.55; }
-  .deleted-text { text-decoration: line-through; color: var(--color-text-disabled); }
-  .deleted-badge {
-    display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 10px;
-    font-size: 0.6875rem; background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error); font-weight: 500; vertical-align: middle;
-  }
-
   .group-card {
     background: var(--color-surface-0); border: 1px solid var(--color-surface-3);
     border-radius: 10px; padding: 14px 16px; cursor: pointer;
     transition: background var(--transition-standard);
   }
   .group-card:hover { background: var(--color-surface-1); }
-  .deleted-card { opacity: 0.6; }
   .card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .card-title { font-size: 0.9375rem; font-weight: 500; }
   .card-desc { font-size: 0.8125rem; color: var(--color-text-secondary); margin: 0 0 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -226,4 +280,21 @@
   }
   .icon-btn:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
   .icon-btn.danger:hover { background: color-mix(in srgb, var(--color-error) 10%, transparent); color: var(--color-error); }
+
+  /* Recently Deleted */
+  .recently-deleted { margin-top: 40px; border-top: 1px solid var(--color-surface-3); padding-top: 24px; }
+  .section-heading { margin: 0 0 16px; font-size: 1rem; font-weight: 500; color: var(--color-text-secondary); }
+  .empty-deleted { font-size: 0.875rem; color: var(--color-text-disabled); margin: 0; }
+  .deleted-list { display: flex; flex-direction: column; gap: 2px; }
+  .deleted-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--color-surface-1); border: 1px solid var(--color-surface-2);
+  }
+  .deleted-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .deleted-name { font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deleted-meta { font-size: 0.75rem; color: var(--color-text-disabled); }
+  .deleted-ttl { font-size: 0.75rem; color: var(--color-text-secondary); }
+  .deleted-ttl.ttl-warning { color: var(--color-warning); }
+  .deleted-ttl.ttl-danger  { color: var(--color-error); }
 </style>

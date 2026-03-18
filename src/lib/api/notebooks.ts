@@ -24,7 +24,8 @@ export function makeNotebooksApi(fetchFn?: typeof fetch) {
     get:    (id: string)                             => a.get<Notebook>(`${BASE}/${id}`),
     create: (payload: CreateNotebookPayload)         => a.post<Notebook>(BASE, payload),
     patch:  (id: string, payload: PatchNotebookPayload) => a.patch<Notebook>(`${BASE}/${id}`, payload),
-    remove: (id: string)                             => a.delete<void>(`${BASE}/${id}`),
+    remove:  (id: string)                             => a.delete<void>(`${BASE}/${id}`),
+    restore: (id: string)                             => a.put<Notebook>(`${BASE}/${id}/restore`, {}),
 
     // Posts
     listPosts: (id: string, page = 0, size = 20, includeDeleted = false) => {
@@ -34,7 +35,8 @@ export function makeNotebooksApi(fetchFn?: typeof fetch) {
     getPost:    (id: string, postId: string)                  => a.get<NotebookPost>(`${BASE}/${id}/posts/${postId}`),
     createPost: (id: string, payload: CreatePostPayload)      => a.post<NotebookPost>(`${BASE}/${id}/posts`, payload),
     patchPost:  (id: string, postId: string, payload: PatchPostPayload) => a.patch<NotebookPost>(`${BASE}/${id}/posts/${postId}`, payload),
-    removePost: (id: string, postId: string)                  => a.delete<void>(`${BASE}/${id}/posts/${postId}`),
+    removePost:  (id: string, postId: string)                  => a.delete<void>(`${BASE}/${id}/posts/${postId}`),
+    restorePost: (id: string, postId: string)                  => a.put<NotebookPost>(`${BASE}/${id}/posts/${postId}/restore`, {}),
 
     // Post attachments
     uploadPostAttachment: (id: string, postId: string, file: File) => {

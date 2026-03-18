@@ -23,7 +23,8 @@ export function makeKanbanApi(fetchFn?: typeof fetch) {
     getBoard:    (boardId: string)                             => a.get<KanbanBoard>(`${BASE}/boards/${boardId}`),
     createBoard: (payload: CreateBoardPayload)                 => a.post<KanbanBoard>(`${BASE}/boards`, payload),
     patchBoard:  (boardId: string, payload: PatchBoardPayload) => a.patch<KanbanBoard>(`${BASE}/boards/${boardId}`, payload),
-    removeBoard: (boardId: string)                             => a.delete<void>(`${BASE}/boards/${boardId}`),
+    removeBoard:  (boardId: string)                             => a.delete<void>(`${BASE}/boards/${boardId}`),
+    restoreBoard: (boardId: string)                             => a.put<KanbanBoard>(`${BASE}/boards/${boardId}/restore`, {}),
 
     // Cards
     listCards: (boardId: string, page = 0, size = 100, includeDeleted = false) => {
@@ -33,7 +34,8 @@ export function makeKanbanApi(fetchFn?: typeof fetch) {
     getCard:    (boardId: string, cardId: string)                            => a.get<KanbanCard>(`${BASE}/boards/${boardId}/cards/${cardId}`),
     createCard: (boardId: string, payload: CreateCardPayload)                => a.post<KanbanCard>(`${BASE}/boards/${boardId}/cards`, payload),
     patchCard:  (boardId: string, cardId: string, payload: PatchCardPayload) => a.patch<KanbanCard>(`${BASE}/boards/${boardId}/cards/${cardId}`, payload),
-    removeCard: (boardId: string, cardId: string)                            => a.delete<void>(`${BASE}/boards/${boardId}/cards/${cardId}`),
+    removeCard:  (boardId: string, cardId: string)                            => a.delete<void>(`${BASE}/boards/${boardId}/cards/${cardId}`),
+    restoreCard: (boardId: string, cardId: string)                            => a.put<KanbanCard>(`${BASE}/boards/${boardId}/cards/${cardId}/restore`, {}),
   }
 }
 

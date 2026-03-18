@@ -24,6 +24,8 @@ export interface Project {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface CreateProjectPayload {

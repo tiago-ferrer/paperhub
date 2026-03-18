@@ -28,7 +28,8 @@ export function makeTranscriptionApi(fetchFn?: typeof fetch) {
     getGroup:    (groupId: string)                              => a.get<TranscriptionGroup>(`${BASE}/${groupId}`),
     createGroup: (payload: CreateGroupPayload)                  => a.post<TranscriptionGroup>(BASE, payload),
     patchGroup:  (groupId: string, payload: PatchGroupPayload)  => a.patch<TranscriptionGroup>(`${BASE}/${groupId}`, payload),
-    removeGroup: (groupId: string)                              => a.delete<void>(`${BASE}/${groupId}`),
+    removeGroup:  (groupId: string)                              => a.delete<void>(`${BASE}/${groupId}`),
+    restoreGroup: (groupId: string)                              => a.put<TranscriptionGroup>(`${BASE}/${groupId}/restore`, {}),
 
     // Transcriptions
     listTranscriptions: (groupId: string, page = 0, size = 20, includeDeleted = false) => {
@@ -43,7 +44,8 @@ export function makeTranscriptionApi(fetchFn?: typeof fetch) {
       if (updates.date !== undefined) q.set('date', updates.date)
       return a.patch<Transcription>(`${BASE}/${groupId}/transcriptions/${id}?${q}`, {})
     },
-    removeTranscription: (groupId: string, id: string)          => a.delete<void>(`${BASE}/${groupId}/transcriptions/${id}`),
+    removeTranscription:  (groupId: string, id: string)          => a.delete<void>(`${BASE}/${groupId}/transcriptions/${id}`),
+    restoreTranscription: (groupId: string, id: string)          => a.put<Transcription>(`${BASE}/${groupId}/transcriptions/${id}/restore`, {}),
     triggerTranscription: async (groupId: string, id: string, language?: string): Promise<void> => {
       try {
         const params = new URLSearchParams()
@@ -107,6 +109,8 @@ export function makeTranscriptionApi(fetchFn?: typeof fetch) {
       a.patch<TranscriptionNote>(`${BASE}/${groupId}/transcriptions/${transcriptionId}/notes/${noteId}`, payload),
     removeNote: (groupId: string, transcriptionId: string, noteId: string) =>
       a.delete<void>(`${BASE}/${groupId}/transcriptions/${transcriptionId}/notes/${noteId}`),
+    restoreNote: (groupId: string, transcriptionId: string, noteId: string) =>
+      a.put<TranscriptionNote>(`${BASE}/${groupId}/transcriptions/${transcriptionId}/notes/${noteId}/restore`, {}),
     generateNote: (groupId: string, transcriptionId: string) =>
       a.post<TranscriptionNote>(`${BASE}/${groupId}/transcriptions/${transcriptionId}/notes/generate`, {}),
   }

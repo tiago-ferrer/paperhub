@@ -5,14 +5,18 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { Project } from '$lib/types/project'
+  import { formatTtlCountdown, formatDeletedAgo, isTtlExpired } from '$lib/utils/ttl'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Layers, MoreVertical, Pencil, Trash2 } from 'lucide-svelte'
+  import { Plus, Layers, MoreVertical, Pencil, Trash2, RotateCcw } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
+
+  const activeProjects  = $derived(data.projects.items.filter(p => !p.deleted))
+  const deletedProjects = $derived(data.projects.items.filter(p => p.deleted))
 
   // Create modal
   let showCreate = $state(false)
@@ -29,6 +33,7 @@
   // Delete
   let deleteTarget = $state<Project | null>(null)
   let deleting = $state(false)
+  let restoringIds = $state<Set<string>>(new Set())
 
   // Dropdown menu
   let menuOpen = $state<string | null>(null)
@@ -83,17 +88,52 @@
 
   async function confirmDelete() {
     if (!deleteTarget) return
+    const target = deleteTarget
     deleting = true
+    deleteTarget = null
     try {
-      await projectsApi.remove(deleteTarget.id)
-      toast.success('Project deleted')
-      deleteTarget = null
+      await projectsApi.remove(target.id)
+      let tid: string
+      tid = toast.success(`"${target.name}" deleted.`, {
+        duration: 8000,
+        action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
+      })
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete project')
     } finally {
       deleting = false
     }
+  }
+
+  async function undoDelete(project: Project, toastId: string) {
+    toast.dismiss(toastId)
+    try {
+      await projectsApi.restore(project.id)
+      toast.success(`"${project.name}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this project.')
+    }
+  }
+
+  async function restoreProject(project: Project) {
+    restoringIds = new Set([...restoringIds, project.id])
+    try {
+      await projectsApi.restore(project.id)
+      toast.success(`"${project.name}" restored.`)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Could not restore this project.')
+    } finally {
+      restoringIds = new Set([...restoringIds].filter(id => id !== project.id))
+    }
+  }
+
+  function toggleDeleted() {
+    const params = new URLSearchParams()
+    if (!data.includeDeleted) params.set('includeDeleted', 'true')
+    goto(`/projects?${params}`)
   }
 
   function closeMenu() { menuOpen = null }
@@ -104,17 +144,22 @@
 <div class="page">
   <div class="page-header">
     <h1>Projects</h1>
-    <Button onclick={openCreate}><Plus size={20} /> New Project</Button>
+    <div class="header-actions">
+      <button class="filter-chip" class:active={data.includeDeleted} onclick={toggleDeleted}>
+        Recently Deleted
+      </button>
+      <Button onclick={openCreate}><Plus size={20} /> New Project</Button>
+    </div>
   </div>
 
-  {#if data.projects.items.length === 0}
+  {#if activeProjects.length === 0 && !data.includeDeleted}
     <EmptyState
       title="No projects yet"
       message="Create a project to organise your notebooks, papers, and transcriptions."
     />
-  {:else}
+  {:else if activeProjects.length > 0}
     <div class="projects-grid">
-      {#each data.projects.items as project}
+      {#each activeProjects as project}
         <div
           class="project-card"
           onclick={() => goto(`/projects/${project.id}`)}
@@ -168,6 +213,39 @@
       {/each}
     </div>
   {/if}
+
+  <!-- Recently Deleted section -->
+  {#if data.includeDeleted}
+    <div class="recently-deleted">
+      <h2 class="section-heading">Recently Deleted</h2>
+      {#if deletedProjects.length === 0}
+        <p class="empty-deleted">No recently deleted projects.</p>
+      {:else}
+        <div class="deleted-list">
+          {#each deletedProjects as project}
+            <div class="deleted-row">
+              <div class="deleted-info">
+                <span class="deleted-name">{project.name}</span>
+                <span class="deleted-meta">{formatDeletedAgo(project.deleted_at)}</span>
+                <span class="deleted-ttl" class:ttl-warning={project.ttl_expiry && (project.ttl_expiry * 1000 - Date.now()) < 2 * 86400000} class:ttl-danger={project.ttl_expiry && (project.ttl_expiry * 1000 - Date.now()) < 86400000}>
+                  {formatTtlCountdown(project.ttl_expiry)}
+                </span>
+              </div>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={isTtlExpired(project.ttl_expiry) || restoringIds.has(project.id)}
+                loading={restoringIds.has(project.id)}
+                onclick={() => restoreProject(project)}
+              >
+                <RotateCcw size={14} /> Restore
+              </Button>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <!-- Create modal -->
@@ -210,7 +288,7 @@
 <DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete project?"
-  message="This will permanently delete the project. The linked content will not be affected."
+  message="This project will be permanently deleted in 7 days. Linked content will not be affected. You can restore it from Recently Deleted."
   confirmPhrase={`I want to delete ${deleteTarget?.name ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
@@ -225,6 +303,15 @@
     margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
   }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+
+  .filter-chip {
+    padding: 6px 16px; border-radius: 20px; border: 1px solid var(--color-surface-3);
+    background: transparent; font-size: 0.8125rem; cursor: pointer; color: var(--color-text-secondary);
+    transition: all var(--transition-standard);
+  }
+  .filter-chip:hover { background: var(--color-surface-2); }
+  .filter-chip.active { background: var(--color-primary-subtle); color: var(--color-primary); border-color: var(--color-primary); }
 
   .projects-grid {
     display: grid;
@@ -284,6 +371,23 @@
     transition: background var(--transition-standard);
   }
   .icon-btn:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+
+  /* Recently Deleted */
+  .recently-deleted { margin-top: 40px; border-top: 1px solid var(--color-surface-3); padding-top: 24px; }
+  .section-heading { margin: 0 0 16px; font-size: 1rem; font-weight: 500; color: var(--color-text-secondary); }
+  .empty-deleted { font-size: 0.875rem; color: var(--color-text-disabled); margin: 0; }
+  .deleted-list { display: flex; flex-direction: column; gap: 2px; }
+  .deleted-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--color-surface-1); border: 1px solid var(--color-surface-2);
+  }
+  .deleted-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .deleted-name { font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .deleted-meta { font-size: 0.75rem; color: var(--color-text-disabled); }
+  .deleted-ttl { font-size: 0.75rem; color: var(--color-text-secondary); }
+  .deleted-ttl.ttl-warning { color: var(--color-warning); }
+  .deleted-ttl.ttl-danger  { color: var(--color-error); }
 
   /* Modal form */
   .modal-form { display: flex; flex-direction: column; gap: 16px; }

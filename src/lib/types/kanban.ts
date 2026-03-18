@@ -14,6 +14,8 @@ export interface KanbanBoard {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface KanbanCard {
@@ -29,6 +31,8 @@ export interface KanbanCard {
   created_at: string
   updated_at: string
   deleted: boolean
+  deleted_at: string | null
+  ttl_expiry: number | null
 }
 
 export interface KanbanColumnPayload {
