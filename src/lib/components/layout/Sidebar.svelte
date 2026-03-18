@@ -8,6 +8,7 @@
   import { notebooks, refreshNotebooks } from '$lib/stores/notebooks'
   import { kanbanBoards, refreshKanbanBoards } from '$lib/stores/kanbanBoards'
   import { projects, refreshProjects } from '$lib/stores/projects'
+  import { ganttCharts, refreshGanttCharts } from '$lib/stores/ganttCharts'
   import { ChevronLeft, ChevronRight, Plus } from 'lucide-svelte'
   import Avatar from '$lib/components/ui/Avatar.svelte'
 
@@ -16,17 +17,19 @@
   const visibleNotebooks = $derived($notebooks.filter(n => !n.deleted))
   const visibleBoards = $derived($kanbanBoards.filter(b => !b.deleted))
   const visibleProjects = $derived($projects.filter(p => !p.deleted))
+  const visibleGanttCharts = $derived($ganttCharts.filter(c => !c.deleted))
 
   let notebooksExpanded = $state(false)
   let transcriptionExpanded = $state(false)
   let kanbanExpanded = $state(false)
   let projectsExpanded = $state(false)
+  let ganttExpanded = $state(false)
   let mcpApiKeysExpanded = $state(false)
 
   // Close mobile sidebar on navigation
   $effect(() => { $page.url.pathname; closeMobileSidebar() })
 
-  onMount(() => { refreshTranscriptionGroups(); refreshNotebooks(); refreshKanbanBoards(); refreshProjects() })
+  onMount(() => { refreshTranscriptionGroups(); refreshNotebooks(); refreshKanbanBoards(); refreshProjects(); refreshGanttCharts() })
 
   function toggleNotebooks() {
     notebooksExpanded = !notebooksExpanded
@@ -42,6 +45,10 @@
 
   function toggleProjects() {
     projectsExpanded = !projectsExpanded
+  }
+
+  function toggleGantt() {
+    ganttExpanded = !ganttExpanded
   }
 
   function toggleMcpApiKeys() {
@@ -78,7 +85,7 @@
       {/if}
       {#each section.items as item}
         {@const active = activeHref.startsWith(item.href)}
-        <div class="nav-item-wrapper" class:has-submenu={item.href === '/notebooks' || item.href === '/transcription' || item.href === '/kanban' || item.href === '/projects' || item.submenu}>
+        <div class="nav-item-wrapper" class:has-submenu={item.href === '/notebooks' || item.href === '/transcription' || item.href === '/kanban' || item.href === '/projects' || item.href === '/gantt' || item.submenu}>
           <a
             href={item.href}
             class="nav-item"
@@ -122,6 +129,16 @@
               title={kanbanExpanded ? 'Collapse' : 'Expand'}
             >
               <ChevronRight size={18} class={kanbanExpanded ? 'rotated' : ''} />
+            </button>
+          {/if}
+          {#if item.href === '/gantt' && !$sidebarCollapsed}
+            <button
+              class="submenu-toggle"
+              onclick={toggleGantt}
+              aria-label={ganttExpanded ? 'Collapse gantt' : 'Expand gantt'}
+              title={ganttExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronRight size={18} class={ganttExpanded ? 'rotated' : ''} />
             </button>
           {/if}
           {#if item.href === '/projects' && !$sidebarCollapsed}
@@ -191,6 +208,24 @@
           <a href="/transcription/new" class="nav-item nav-subitem nav-subitem-new">
             <Plus size={14} />
             <span>New group</span>
+          </a>
+        {/if}
+        {#if item.href === '/gantt' && !$sidebarCollapsed && ganttExpanded}
+          {#each visibleGanttCharts as chart}
+            {@const chartActive = activeHref.startsWith(`/gantt/${chart.id}`)}
+            <a
+              href="/gantt/{chart.id}"
+              class="nav-item nav-subitem"
+              class:active={chartActive}
+              aria-current={chartActive ? 'page' : undefined}
+            >
+              <span class="subitem-dot">·</span>
+              <span>{chart.title}</span>
+            </a>
+          {/each}
+          <a href="/gantt" class="nav-item nav-subitem nav-subitem-new">
+            <Plus size={14} />
+            <span>New chart</span>
           </a>
         {/if}
         {#if item.href === '/projects' && !$sidebarCollapsed && projectsExpanded}

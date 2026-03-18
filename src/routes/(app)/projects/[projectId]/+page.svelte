@@ -16,7 +16,7 @@
   import { formatDate } from '$lib/utils/format'
   import {
     Plus, Pencil, X, NotebookPen, Mic, FileText,
-    BookOpen, FolderOpen, KanbanSquare
+    BookOpen, FolderOpen, KanbanSquare, GanttChart as GanttIcon
   } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
@@ -71,6 +71,7 @@
     NOTEBOOK_POST:       project.items.filter(i => i.type === 'NOTEBOOK_POST'),
     TRANSCRIPTION:       project.items.filter(i => i.type === 'TRANSCRIPTION'),
     KANBAN_BOARD:        project.items.filter(i => i.type === 'KANBAN_BOARD'),
+    GANTT_CHART:         project.items.filter(i => i.type === 'GANTT_CHART'),
   })
 
   // Already-added entity ids (for deduplication in add flow)
@@ -89,6 +90,9 @@
     if (item.type === 'KANBAN_BOARD') {
       return data.boards.find(b => b.id === item.entity_id)?.title ?? item.entity_id
     }
+    if (item.type === 'GANTT_CHART') {
+      return data.ganttCharts.find(c => c.id === item.entity_id)?.title ?? item.entity_id
+    }
     // NOTEBOOK_POST and TRANSCRIPTION resolved async
     return resolvedNames[item.entity_id] ?? item.entity_id
   }
@@ -100,6 +104,7 @@
     if (item.type === 'NOTEBOOK_POST') return `/notebooks/${item.parent_id}/posts/${item.entity_id}`
     if (item.type === 'TRANSCRIPTION') return `/transcription/${item.parent_id}/${item.entity_id}`
     if (item.type === 'KANBAN_BOARD') return `/kanban/${item.entity_id}`
+    if (item.type === 'GANTT_CHART') return `/gantt/${item.entity_id}`
     return '/'
   }
 
@@ -199,6 +204,7 @@
   // Type metadata
   const TYPES: { type: ProjectItemType; label: string }[] = [
     { type: 'KANBAN_BOARD',        label: 'Kanban Board' },
+    { type: 'GANTT_CHART',         label: 'Gantt Chart' },
     { type: 'PAPER',               label: 'Paper' },
     { type: 'NOTEBOOK',            label: 'Notebook' },
     { type: 'NOTEBOOK_POST',       label: 'Notebook Post' },
@@ -211,6 +217,7 @@
     TRANSCRIPTION_GROUP: 'Group',
     PAPER:               'Paper',
     KANBAN_BOARD:        'Board',
+    GANTT_CHART:         'Gantt',
     NOTEBOOK_POST:       'Post',
     TRANSCRIPTION:       'Recording',
   }
@@ -220,6 +227,7 @@
     TRANSCRIPTION_GROUP: 'Transcription Groups',
     PAPER:               'Papers',
     KANBAN_BOARD:        'Kanban Boards',
+    GANTT_CHART:         'Gantt Charts',
     NOTEBOOK_POST:       'Posts',
     TRANSCRIPTION:       'Transcriptions',
   }
@@ -403,6 +411,25 @@
           <p class="empty-list">No kanban boards found.</p>
         {/if}
 
+      {:else if addType === 'GANTT_CHART'}
+        {#each data.ganttCharts as chart}
+          {@const alreadyAdded = addedIds.has(chart.id)}
+          <button
+            class="entity-row"
+            class:selected={addEntityId === chart.id}
+            class:already-added={alreadyAdded}
+            disabled={alreadyAdded}
+            onclick={() => addEntityId = addEntityId === chart.id ? null : chart.id}
+          >
+            <GanttIcon size={18} />
+            <span class="entity-label">{chart.title}</span>
+            {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+          </button>
+        {/each}
+        {#if data.ganttCharts.length === 0}
+          <p class="empty-list">No Gantt charts found.</p>
+        {/if}
+
       {:else if addType === 'NOTEBOOK_POST'}
         {#if !addParentId}
           <p class="step-hint">Step 1: Choose a notebook</p>
@@ -565,6 +592,7 @@
   .type-badge--transcription_group { background: color-mix(in srgb, #0ea5e9 12%, transparent); color: #0ea5e9; }
   .type-badge--paper               { background: color-mix(in srgb, #22c55e 12%, transparent); color: #22c55e; }
   .type-badge--kanban_board        { background: color-mix(in srgb, #f97316 12%, transparent); color: #f97316; }
+  .type-badge--gantt_chart         { background: color-mix(in srgb, #14b8a6 12%, transparent); color: #14b8a6; }
   .type-badge--notebook_post       { background: color-mix(in srgb, #a855f7 12%, transparent); color: #a855f7; }
   .type-badge--transcription       { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #f59e0b; }
 

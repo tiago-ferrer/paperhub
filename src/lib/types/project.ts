@@ -5,6 +5,7 @@ export type ProjectItemType =
   | 'NOTEBOOK_POST'
   | 'TRANSCRIPTION'
   | 'KANBAN_BOARD'
+  | 'GANTT_CHART'
 
 export interface ProjectItem {
   id: string

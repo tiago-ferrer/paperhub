@@ -4,17 +4,19 @@ import { makeNotebooksApi } from '$lib/api/notebooks'
 import { makeTranscriptionApi } from '$lib/api/transcription'
 import { makeReferencesApi } from '$lib/api/references'
 import { makeKanbanApi } from '$lib/api/kanban'
+import { makeGanttApi } from '$lib/api/gantt'
 import { error } from '@sveltejs/kit'
 import { ApiError } from '$lib/api/client'
 
 export const load: PageLoad = async ({ params, fetch }) => {
   try {
-    const [project, notebooks, groups, references, boards] = await Promise.all([
+    const [project, notebooks, groups, references, boards, ganttCharts] = await Promise.all([
       makeProjectsApi(fetch).get(params.projectId),
       makeNotebooksApi(fetch).list(0, 100, false),
       makeTranscriptionApi(fetch).listGroups(0, 100, false),
       makeReferencesApi(fetch).list(0, 100),
       makeKanbanApi(fetch).listBoards(0, 100, false),
+      makeGanttApi(fetch).listCharts(0, 100, false),
     ])
     return {
       project,
@@ -22,6 +24,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
       groups: groups.items,
       references: references.items,
       boards: boards.items,
+      ganttCharts: ganttCharts.items,
     }
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) throw error(404, 'Project not found')
