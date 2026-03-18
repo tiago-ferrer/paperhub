@@ -7,7 +7,7 @@
   import type { GanttChart } from '$lib/types/gantt'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
@@ -158,10 +158,11 @@
 </Modal>
 
 <!-- Delete Confirm -->
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete chart?"
-  message={`"${deleteTarget?.title}" and all its tasks will be soft-deleted.`}
+  message="This chart and all its tasks will be permanently deleted."
+  confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}

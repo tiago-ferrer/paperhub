@@ -7,7 +7,7 @@
   import type { KanbanBoard } from '$lib/types/kanban'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
   import { formatDate } from '$lib/utils/format'
   import { Plus, Pencil, Trash2, Columns3 } from 'lucide-svelte'
@@ -119,10 +119,11 @@
   {/if}
 </div>
 
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete board?"
-  message="This board and all its cards will be soft-deleted."
+  message="This board and all its cards will be permanently deleted."
+  confirmPhrase={`I want to delete ${deleteTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}

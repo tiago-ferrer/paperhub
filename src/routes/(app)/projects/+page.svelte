@@ -7,7 +7,7 @@
   import type { Project } from '$lib/types/project'
   import Button from '$lib/components/ui/Button.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import { formatDate } from '$lib/utils/format'
   import { Plus, Layers, MoreVertical, Pencil, Trash2 } from 'lucide-svelte'
@@ -207,10 +207,11 @@
 </Modal>
 
 <!-- Delete confirm -->
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete project?"
   message="This will permanently delete the project. The linked content will not be affected."
+  confirmPhrase={`I want to delete ${deleteTarget?.name ?? ''}`}
   confirmLabel="Delete"
   onconfirm={confirmDelete}
   oncancel={() => deleteTarget = null}

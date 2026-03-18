@@ -8,7 +8,6 @@
   import { renderMarkdown } from '$lib/utils/markdown'
   import Button from '$lib/components/ui/Button.svelte'
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import { Plus, Settings, Trash2, ChevronUp, ChevronDown, X, GripVertical, Check, Pencil, FolderOpen } from 'lucide-svelte'
@@ -624,10 +623,11 @@
 </SlideOver>
 
 <!-- Delete card confirm -->
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!deleteCardTarget}
   title="Delete card?"
-  message="This card will be soft-deleted."
+  message="This card will be permanently deleted."
+  confirmPhrase={`I want to delete ${deleteCardTarget?.title ?? ''}`}
   confirmLabel="Delete"
   onconfirm={deleteCard}
   oncancel={() => deleteCardTarget = null}

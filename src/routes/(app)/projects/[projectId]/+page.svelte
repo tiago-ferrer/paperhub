@@ -11,7 +11,7 @@
   import type { Transcription } from '$lib/types/transcription'
   import Button from '$lib/components/ui/Button.svelte'
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
-  import ConfirmDialog from '$lib/components/dialogs/ConfirmDialog.svelte'
+  import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import { formatDate } from '$lib/utils/format'
   import {
@@ -310,10 +310,11 @@
 </Modal>
 
 <!-- Remove item confirm -->
-<ConfirmDialog
+<DestructiveConfirmDialog
   open={!!removeTarget}
   title="Remove item?"
   message="This item will be removed from the project. The underlying content will not be affected."
+  confirmPhrase="I want to remove this item"
   confirmLabel="Remove"
   onconfirm={confirmRemove}
   oncancel={() => removeTarget = null}
