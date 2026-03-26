@@ -9,11 +9,14 @@ export interface PostAttachment {
 }
 
 export interface NotebookPost {
+  type?: 'TEXT' | 'HANDWRITING'
   id: string
   notebook_id: string
   owner: string
   title: string
   content: string
+  pdf_s3_key?: string | null
+  drawing_s3_key?: string | null
   paper_ids: string[]
   attachments: PostAttachment[]
   created_at: string
@@ -21,6 +24,20 @@ export interface NotebookPost {
   deleted: boolean
   deleted_at: string | null
   ttl_expiry: number | null
+}
+
+export interface HandwritingPost {
+  type: 'HANDWRITING'
+  id: string
+  notebook_id: string
+  title: string
+  pdf_s3_key: string | null
+  drawing_s3_key: string | null
+  paper_ids: string[]
+  created_at: string
+  updated_at: string
+  deleted: boolean
+  deleted_at: string | null
 }
 
 export interface Notebook {

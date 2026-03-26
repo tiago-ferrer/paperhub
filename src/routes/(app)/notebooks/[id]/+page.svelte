@@ -12,7 +12,13 @@
   import { formatDate } from '$lib/utils/format'
   import { stripMarkdown } from '$lib/utils/markdown'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
-  import { Plus, Pencil, Trash2, FileText, Paperclip, FolderOpen } from 'lucide-svelte'
+  import { Plus, Pencil, Trash2, FileText, Paperclip, FolderOpen, PenLine, FileImage } from 'lucide-svelte'
+
+  function postHref(post: NotebookPost) {
+    return post.type === 'HANDWRITING'
+      ? `/notebooks/${nb.id}/handwriting-posts/${post.id}`
+      : `/notebooks/${nb.id}/posts/${post.id}`
+  }
 
   let { data }: { data: PageData } = $props()
   let nb = $derived(data.notebook)
@@ -76,37 +82,63 @@
   {:else}
     <div class="post-list">
       {#each data.posts.items as post}
-        <div class="post-card" class:deleted-card={post.deleted} onclick={() => !post.deleted && goto(`/notebooks/${nb.id}/posts/${post.id}`)}>
+        <div class="post-card" class:deleted-card={post.deleted} onclick={() => !post.deleted && goto(postHref(post))}>
           <div class="post-header">
             <div class="post-title-row">
+              {#if post.type === 'HANDWRITING'}
+                <PenLine size={15} class="type-icon" />
+              {/if}
               <span class="post-title" class:deleted-text={post.deleted}>{post.title}</span>
               {#if post.deleted}<span class="deleted-badge">deleted</span>{/if}
             </div>
             <div class="post-actions" onclick={(e) => e.stopPropagation()}>
-              {#if !post.deleted}
+              {#if !post.deleted && post.type !== 'HANDWRITING'}
                 <button class="icon-btn" title="Edit" onclick={() => goto(`/notebooks/${nb.id}/posts/${post.id}/edit`)}>
                   <Pencil size={18} />
                 </button>
+              {/if}
+              {#if !post.deleted}
                 <button class="icon-btn danger" title="Delete" onclick={() => deleteTarget = post}>
                   <Trash2 size={18} />
                 </button>
               {/if}
             </div>
           </div>
-          {#if post.content}
-            <p class="post-preview">{stripMarkdown(post.content, 180)}</p>
-          {/if}
-          <div class="post-footer">
-            <span class="post-date">{formatDate(post.updated_at)}</span>
-            <div class="post-meta">
-              {#if post.paper_ids?.length}
-                <span class="meta-chip"><FileText size={13} /> {post.paper_ids.length} paper{post.paper_ids.length !== 1 ? 's' : ''}</span>
-              {/if}
-              {#if post.attachments?.filter(a => !a.deleted).length}
-                <span class="meta-chip"><Paperclip size={13} /> {post.attachments.filter(a => !a.deleted).length} file{post.attachments.filter(a => !a.deleted).length !== 1 ? 's' : ''}</span>
-              {/if}
+          {#if post.type === 'HANDWRITING'}
+            <div class="post-footer" style="margin-top: 0;">
+              <span class="post-date">{formatDate(post.updated_at)}</span>
+              <div class="post-meta">
+                {#if post.pdf_s3_key}
+                  <span class="meta-chip"><FileImage size={13} /> PDF</span>
+                {:else}
+                  <span class="meta-chip muted">No PDF</span>
+                {/if}
+                {#if post.drawing_s3_key}
+                  <span class="meta-chip"><PenLine size={13} /> Drawing</span>
+                {:else}
+                  <span class="meta-chip muted">No Drawing</span>
+                {/if}
+                {#if post.paper_ids?.length}
+                  <span class="meta-chip"><FileText size={13} /> {post.paper_ids.length} paper{post.paper_ids.length !== 1 ? 's' : ''}</span>
+                {/if}
+              </div>
             </div>
-          </div>
+          {:else}
+            {#if post.content}
+              <p class="post-preview">{stripMarkdown(post.content, 180)}</p>
+            {/if}
+            <div class="post-footer">
+              <span class="post-date">{formatDate(post.updated_at)}</span>
+              <div class="post-meta">
+                {#if post.paper_ids?.length}
+                  <span class="meta-chip"><FileText size={13} /> {post.paper_ids.length} paper{post.paper_ids.length !== 1 ? 's' : ''}</span>
+                {/if}
+                {#if post.attachments?.filter(a => !a.deleted).length}
+                  <span class="meta-chip"><Paperclip size={13} /> {post.attachments.filter(a => !a.deleted).length} file{post.attachments.filter(a => !a.deleted).length !== 1 ? 's' : ''}</span>
+                {/if}
+              </div>
+            </div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -197,6 +229,7 @@
     font-size: 0.75rem; color: var(--color-text-secondary);
     padding: 2px 8px; background: var(--color-surface-2); border-radius: 10px;
   }
+  .meta-chip.muted { color: var(--color-text-disabled); background: transparent; border: 1px dashed var(--color-surface-3); }
 
   .icon-btn {
     display: flex; align-items: center; justify-content: center;

@@ -2,7 +2,7 @@
   import { page } from '$app/stores'
   import { ChevronRight } from 'lucide-svelte'
   import type { Reference } from '$lib/types/reference'
-  import type { Notebook, NotebookPost } from '$lib/types/notebook'
+  import type { Notebook, NotebookPost, HandwritingPost } from '$lib/types/notebook'
   import type { KanbanBoard } from '$lib/types/kanban'
   import type { TranscriptionGroup, Transcription } from '$lib/types/transcription'
   import type { Project } from '$lib/types/project'
@@ -13,7 +13,7 @@
   }
 
   function labelFor(part: string): string {
-    const data = $page.data as { reference?: Reference; notebook?: Notebook; post?: NotebookPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project; chart?: GanttChart }
+    const data = $page.data as { reference?: Reference; notebook?: Notebook; post?: NotebookPost; handwritingPost?: HandwritingPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project; chart?: GanttChart }
 
     if (data.reference && part === data.reference.id) {
       const firstAuthor = data.reference.author?.[0]?.split(' ').pop() ?? ''
@@ -51,15 +51,24 @@
       })
     }
 
+    if (data.handwritingPost && part === data.handwritingPost.id) {
+      return truncate(data.handwritingPost.title)
+    }
+
     return part.charAt(0).toUpperCase() + part.slice(1).replace(/-/g, ' ')
   }
 
+  const HIDDEN_SEGMENTS = new Set(['handwriting-posts'])
+
   const crumbs = $derived.by(() => {
     const parts = $page.url.pathname.split('/').filter(Boolean)
-    return parts.map((part, i) => ({
-      label: labelFor(part),
-      href: '/' + parts.slice(0, i + 1).join('/'),
-    }))
+    return parts
+      .map((part, i) => ({ part, i }))
+      .filter(({ part }) => !HIDDEN_SEGMENTS.has(part))
+      .map(({ part, i }) => ({
+        label: labelFor(part),
+        href: '/' + parts.slice(0, i + 1).join('/'),
+      }))
   })
 </script>
 

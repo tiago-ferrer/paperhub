@@ -2,6 +2,7 @@ import { api, makeApi } from './client'
 import type {
   Notebook,
   NotebookPost,
+  HandwritingPost,
   PostAttachment,
   CreateNotebookPayload,
   PatchNotebookPayload,
@@ -37,6 +38,18 @@ export function makeNotebooksApi(fetchFn?: typeof fetch) {
     patchPost:  (id: string, postId: string, payload: PatchPostPayload) => a.patch<NotebookPost>(`${BASE}/${id}/posts/${postId}`, payload),
     removePost:  (id: string, postId: string)                  => a.delete<void>(`${BASE}/${id}/posts/${postId}`),
     restorePost: (id: string, postId: string)                  => a.put<NotebookPost>(`${BASE}/${id}/posts/${postId}/restore`, {}),
+
+    // Handwriting posts
+    getHandwritingPost: (id: string, postId: string) =>
+      a.get<HandwritingPost>(`${BASE}/${id}/handwriting-posts/${postId}`),
+    getHandwritingPostPdfUrl: async (id: string, postId: string): Promise<string> => {
+      const res = await a.get<{ url: string }>(`${BASE}/${id}/handwriting-posts/${postId}/pdf/url`)
+      return res.url
+    },
+    getHandwritingPostDrawingUrl: async (id: string, postId: string): Promise<string> => {
+      const res = await a.get<{ url: string }>(`${BASE}/${id}/handwriting-posts/${postId}/drawing/url`)
+      return res.url
+    },
 
     // Post attachments
     uploadPostAttachment: (id: string, postId: string, file: File) => {
