@@ -11,6 +11,7 @@
   import FileUpload from '$lib/components/forms/FileUpload.svelte'
   import FormField from '$lib/components/forms/FormField.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
+  import CopyCitation from '$lib/components/references/CopyCitation.svelte'
   import { formatDate, formatBytes, formatDoi } from '$lib/utils/format'
   import { Pencil, Users, Plus, ExternalLink, Download, FileText, Trash2, Eye, FolderOpen, FileCheck, Maximize2, Minimize2 } from 'lucide-svelte'
   import type { Attachment } from '$lib/types/reference'
@@ -235,6 +236,8 @@
           {/if}
         </div>
       </div>
+
+      <CopyCitation {reference} />
 
       {#if reference.abstract}
         <div class="card">
