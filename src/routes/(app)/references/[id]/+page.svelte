@@ -12,7 +12,7 @@
   import FormField from '$lib/components/forms/FormField.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import { formatDate, formatBytes, formatDoi } from '$lib/utils/format'
-  import { Pencil, Users, Plus, ExternalLink, Download, FileText, Trash2, Eye, FolderOpen, FileCheck } from 'lucide-svelte'
+  import { Pencil, Users, Plus, ExternalLink, Download, FileText, Trash2, Eye, FolderOpen, FileCheck, Maximize2, Minimize2 } from 'lucide-svelte'
   import type { Attachment } from '$lib/types/reference'
 
   let { data }: { data: PageData } = $props()
@@ -31,6 +31,7 @@
   let loadingPdfId     = $state<string | null>(null)
   let loadingAnnotId   = $state<string | null>(null)
   let pdfColEl         = $state<HTMLElement | null>(null)
+  let pdfExpanded      = $state(false)
 
   $effect(() => {
     if (pdfUrl && pdfColEl) {
@@ -127,6 +128,8 @@
     }
   }
 </script>
+
+<svelte:window onkeydown={(e) => { if (e.key === 'Escape' && pdfExpanded) pdfExpanded = false }} />
 
 <div class="page">
   <div class="page-header">
@@ -332,9 +335,24 @@
     </div>
 
     <!-- Right column: PDF viewer -->
-    <div class="right-col" class:pdf-hidden={!pdfUrl} bind:this={pdfColEl}>
+    <div class="right-col" class:pdf-hidden={!pdfUrl} class:expanded={pdfExpanded} bind:this={pdfColEl}>
       <div class="card pdf-card">
-        <h2 class="card-title">PDF Viewer</h2>
+        <div class="pdf-viewer-header">
+          <h2 class="card-title">PDF Viewer</h2>
+          {#if pdfUrl}
+            <button
+              class="icon-btn"
+              onclick={() => pdfExpanded = !pdfExpanded}
+              title={pdfExpanded ? 'Exit full screen (Esc)' : 'Full screen'}
+            >
+              {#if pdfExpanded}
+                <Minimize2 size={18} />
+              {:else}
+                <Maximize2 size={18} />
+              {/if}
+            </button>
+          {/if}
+        </div>
         {#if pdfUrl}
           <a href={pdfUrl} target="_blank" rel="noopener" class="pdf-open-btn">Open PDF in browser</a>
           <div class="pdf-scroll-wrap">
@@ -458,12 +476,29 @@
   }
   @media (max-width: 1019px) { .pdf-open-btn { display: block; } }
 
+  .pdf-viewer-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+  }
+  .pdf-viewer-header .card-title { margin: 0; }
+
   .pdf-card { display: flex; flex-direction: column; position: sticky; top: 80px; }
   .pdf-scroll-wrap {
     width: 100%; height: calc(100vh - 220px); min-height: 400px;
     overflow: auto; -webkit-overflow-scrolling: touch; border-radius: 6px;
   }
   .pdf-iframe { width: 100%; height: 100%; border: none; display: block; overflow: auto; }
+
+  /* Full-screen expanded state */
+  .right-col.expanded {
+    position: fixed; inset: 0; z-index: 100;
+  }
+  .right-col.expanded .pdf-card {
+    height: 100%; border-radius: 0; border: none; margin: 0; position: static;
+  }
+  .right-col.expanded .pdf-scroll-wrap {
+    flex: 1; height: auto; min-height: 0; border-radius: 0;
+  }
+  .right-col.expanded .pdf-open-btn { display: none; }
   .pdf-empty {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 12px; height: 300px; color: var(--color-text-disabled);
