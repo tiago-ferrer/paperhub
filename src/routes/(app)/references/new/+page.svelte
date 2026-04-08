@@ -44,6 +44,7 @@
 
   let saving = $state(false)
   let errors = $state<Record<string, string>>({})
+  let doiConflict = $state(false)
 
   // Field visibility per entry type
   const showField = $derived.by(() => {
@@ -131,7 +132,12 @@
       toast.success('Reference created')
       goto(`/references/${reference.id}`)
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to create reference')
+      if (err instanceof ApiError && err.status === 409) {
+        errors = { ...errors, doi: 'You already have a reference with this DOI.' }
+        doiConflict = true
+      } else {
+        toast.error(err instanceof ApiError ? err.message : 'Failed to create reference')
+      }
     } finally {
       saving = false
     }
@@ -262,9 +268,19 @@
     <fieldset class="group">
       <legend class="group-legend">Links</legend>
       <div class="form-grid">
-        <FormField label="DOI">
-          <input type="text" bind:value={doi} placeholder="10.xxxx/xxxxx" />
-        </FormField>
+        <div class="doi-field">
+          <FormField label="DOI" error={errors.doi}>
+            <input
+              type="text"
+              bind:value={doi}
+              placeholder="10.xxxx/xxxxx"
+              oninput={() => { doiConflict = false; const { doi: _, ...rest } = errors; errors = rest }}
+            />
+          </FormField>
+          {#if doiConflict}
+            <a href="/references" class="doi-conflict-link">View existing reference →</a>
+          {/if}
+        </div>
         <FormField label="URL">
           <input type="url" bind:value={url} placeholder="https://…" />
         </FormField>
@@ -349,6 +365,13 @@
   :global(.form textarea) { resize: vertical; }
 
   .form-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+  .doi-field { display: flex; flex-direction: column; gap: 4px; }
+  .doi-conflict-link {
+    font-size: 0.75rem; color: var(--color-primary); text-decoration: none;
+    padding-left: 2px;
+  }
+  .doi-conflict-link:hover { text-decoration: underline; }
 
   @media (max-width: 1019px) {
     .page { max-width: 100%; }
