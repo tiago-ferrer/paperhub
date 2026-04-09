@@ -2,6 +2,7 @@
   import { invalidateAll } from '$app/navigation'
   import { scale, fade } from 'svelte/transition'
   import { referencesApi } from '$lib/api/references'
+  import { folders } from '$lib/stores/folders'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import type { BibImportResult } from '$lib/types/reference'
@@ -11,17 +12,29 @@
   interface Props {
     open?: boolean
     onclose?: () => void
+    /** Pre-select this folder when the modal opens (e.g. when a folder is active in the sidebar). */
+    initialFolderId?: string | null
   }
-  let { open = false, onclose }: Props = $props()
+  let { open = false, onclose, initialFolderId = null }: Props = $props()
 
   type Phase = 'upload' | 'done'
 
-  let phase      = $state<Phase>('upload')
-  let file       = $state<File | null>(null)
-  let uploading  = $state(false)
-  let result     = $state<BibImportResult | null>(null)
-  let dragOver   = $state(false)
-  let fileInput  = $state<HTMLInputElement | undefined>(undefined)
+  let phase            = $state<Phase>('upload')
+  let file             = $state<File | null>(null)
+  let uploading        = $state(false)
+  let result           = $state<BibImportResult | null>(null)
+  let dragOver         = $state(false)
+  let fileInput        = $state<HTMLInputElement | undefined>(undefined)
+  let selectedFolderId = $state<string | null>(initialFolderId)
+  let folderError      = $state<string | null>(null)
+
+  // Re-sync when the prop changes (e.g. user navigates to a different folder)
+  $effect(() => { selectedFolderId = initialFolderId })
+
+  const selectedFolderName = $derived.by(() => {
+    if (!selectedFolderId) return null
+    return folders.find(selectedFolderId)?.name ?? null
+  })
 
   const MAX_BYTES = 10 * 1024 * 1024
 
@@ -51,14 +64,20 @@
 
   async function doImport() {
     if (!file) return
+    folderError = null
     uploading = true
     try {
-      result = await referencesApi.importBib(file)
+      result = await referencesApi.importBib(file, selectedFolderId ?? undefined)
       phase = 'done'
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Import failed. Please try again.')
-      reset()
-      onclose?.()
+      if (e instanceof ApiError && e.status === 404) {
+        folderError = 'The selected folder no longer exists. Please choose another.'
+        selectedFolderId = null
+      } else {
+        toast.error(e instanceof ApiError ? e.message : 'Import failed. Please try again.')
+        reset()
+        onclose?.()
+      }
     } finally {
       uploading = false
     }
@@ -74,6 +93,8 @@
     file = null
     result = null
     phase = 'upload'
+    folderError = null
+    selectedFolderId = initialFolderId
     if (fileInput) fileInput.value = ''
   }
 
@@ -81,6 +102,8 @@
     file = null
     result = null
     phase = 'upload'
+    folderError = null
+    selectedFolderId = initialFolderId
     if (fileInput) fileInput.value = ''
   }
 
@@ -136,6 +159,26 @@
             onchange={onInputChange}
           />
 
+          <!-- Folder selector -->
+          <div class="folder-field">
+            <label class="folder-label" for="import-folder">Import into folder</label>
+            <select
+              id="import-folder"
+              class="folder-select"
+              class:error={!!folderError}
+              bind:value={selectedFolderId}
+              onchange={() => folderError = null}
+            >
+              <option value={null}>— No folder (unfiled) —</option>
+              {#each folders.flatten() as { folder, depth } (folder.id)}
+                <option value={folder.id}>{'\u00a0\u00a0\u00a0\u00a0'.repeat(depth)}{folder.name}</option>
+              {/each}
+            </select>
+            {#if folderError}
+              <p class="folder-error">{folderError}</p>
+            {/if}
+          </div>
+
           {#if uploading}
             <p class="uploading-msg">Importing your references…</p>
           {/if}
@@ -149,7 +192,7 @@
                 <div class="summary-row success">
                   <CheckCircle size={18} />
                   <span>
-                    <strong>{result.added}</strong> reference{result.added === 1 ? '' : 's'} imported successfully
+                    <strong>{result.added}</strong> reference{result.added === 1 ? '' : 's'} imported successfully{selectedFolderName ? ` into "${selectedFolderName}"` : ''}
                   </span>
                 </div>
 
@@ -257,6 +300,18 @@
   .filename   { margin: 0; font-size: 0.9375rem; font-weight: 500; color: var(--color-primary); word-break: break-all; }
 
   .hidden-input { display: none; }
+
+  .folder-field { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+  .folder-label { font-size: 0.8125rem; font-weight: 500; color: var(--color-text-secondary); }
+  .folder-select {
+    width: 100%; padding: 8px 10px; border-radius: 8px; font-size: 0.875rem; font-family: inherit;
+    border: 1px solid var(--color-surface-3); background: var(--color-surface-1);
+    color: var(--color-text-primary); outline: none; cursor: pointer;
+    transition: border-color var(--transition-standard);
+  }
+  .folder-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-subtle); }
+  .folder-select.error { border-color: var(--color-error); }
+  .folder-error { margin: 0; font-size: 0.8125rem; color: var(--color-error); }
 
   .uploading-msg {
     text-align: center; margin-top: 16px; font-size: 0.875rem; color: var(--color-text-secondary);

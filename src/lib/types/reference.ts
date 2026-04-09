@@ -78,6 +78,7 @@ export interface Reference {
   citation_count: number | null
 
   // App fields
+  folder_id: string | null
   created_at: string
   updated_at: string
   notes: UserNote[] | null

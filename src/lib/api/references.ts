@@ -7,9 +7,10 @@ const BASE = '/api/v1/references'
 export function makeReferencesApi(fetchFn?: typeof fetch) {
   const a = fetchFn ? makeApi(fetchFn) : api
   return {
-    list: (page = 0, size = 20, nextToken?: string) => {
+    list: (page = 0, size = 20, nextToken?: string, folderId?: string) => {
       const params = new URLSearchParams({ page: String(page), size: String(size) })
       if (nextToken) params.set('next_token', nextToken)
+      if (folderId)  params.set('folderId', folderId)
       return a.get<PageResult<Reference>>(`${BASE}?${params}`)
     },
     get:         (id: string)                                   => a.get<Reference>(`${BASE}/${id}`),
@@ -36,9 +37,13 @@ export function makeReferencesApi(fetchFn?: typeof fetch) {
     },
     deleteAttachment: (id: string, attachId: string) => a.delete<Reference>(`${BASE}/${id}/attachments/${attachId}`),
 
-    importBib: (file: File) => {
+    assignFolder: (id: string, folderId: string | null) =>
+      a.put<Reference>(`${BASE}/${id}/folder`, { folder_id: folderId }),
+
+    importBib: (file: File, folderId?: string) => {
       const fd = new FormData(); fd.append('file', file)
-      return a.upload<BibImportResult>(`${BASE}/import`, fd)
+      const url = folderId ? `${BASE}/import?folderId=${folderId}` : `${BASE}/import`
+      return a.upload<BibImportResult>(url, fd)
     },
 
     listViewers:  (id: string)                          => a.get<Viewer[]>(`${BASE}/${id}/viewers`),

@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { PageData } from './$types'
   import { goto, invalidateAll } from '$app/navigation'
+  import { onMount } from 'svelte'
   import { referencesApi } from '$lib/api/references'
+  import { folders } from '$lib/stores/folders'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import Button from '$lib/components/ui/Button.svelte'
@@ -18,6 +20,26 @@
 
   let { data }: { data: PageData } = $props()
   let reference = $derived(data.reference)
+
+  // Folder assignment (OWNER only)
+  let folderSelectStr  = $state(reference.folder_id ?? '')
+  let assigningFolder  = $state(false)
+  $effect(() => { folderSelectStr = reference.folder_id ?? '' })
+
+  onMount(() => { if ($folders.length === 0) folders.load() })
+
+  async function assignFolder(folderId: string | null) {
+    assigningFolder = true
+    try {
+      await referencesApi.assignFolder(reference.id, folderId)
+      await invalidateAll()
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Failed to update folder')
+      folderSelectStr = reference.folder_id ?? ''
+    } finally {
+      assigningFolder = false
+    }
+  }
 
   let showAddToProject  = $state(false)
   let noteSlideOpen     = $state(false)
@@ -233,6 +255,29 @@
                 <span class="cat-chip">{cat}</span>
               {/each}
             </div>
+          {/if}
+
+          <!-- Folder -->
+          <span class="meta-label">Folder</span>
+          {#if reference.role === 'OWNER'}
+            <select
+              class="folder-inline-select"
+              class:folder-busy={assigningFolder}
+              value={folderSelectStr}
+              disabled={assigningFolder}
+              onchange={(e) => {
+                const v = (e.target as HTMLSelectElement).value
+                folderSelectStr = v
+                assignFolder(v === '' ? null : v)
+              }}
+            >
+              <option value="">— Unfiled —</option>
+              {#each folders.flatten() as { folder, depth } (folder.id)}
+                <option value={folder.id}>{'\u00a0\u00a0\u00a0\u00a0'.repeat(depth)}{folder.name}</option>
+              {/each}
+            </select>
+          {:else}
+            <span>{reference.folder_id ? (folders.find(reference.folder_id)?.name ?? '—') : '—'}</span>
           {/if}
         </div>
       </div>
@@ -454,6 +499,15 @@
 
   .chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
   .cat-chip { padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; background: var(--color-surface-2); color: var(--color-text-secondary); }
+
+  .folder-inline-select {
+    padding: 4px 8px; border-radius: 6px; font-size: 0.875rem; font-family: inherit;
+    border: 1px solid var(--color-surface-3); background: var(--color-surface-1);
+    color: var(--color-text-primary); outline: none; cursor: pointer; max-width: 100%;
+    transition: border-color var(--transition-standard);
+  }
+  .folder-inline-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary-subtle); }
+  .folder-inline-select.folder-busy { opacity: 0.6; cursor: wait; }
 
   .abstract { font-size: 0.875rem; line-height: 1.7; margin: 0; }
   .bib-note { font-size: 0.875rem; line-height: 1.6; margin: 0; color: var(--color-text-secondary); font-style: italic; }
