@@ -4,7 +4,6 @@
   import { toggleTheme, theme, toggleMobileSidebar } from '$lib/stores/ui'
   import { Sun, Moon, LogOut, Menu } from 'lucide-svelte'
   import Breadcrumb from './Breadcrumb.svelte'
-  import SearchBox from '$lib/components/forms/SearchBox.svelte'
 
   function logout() { authStore.clear(); goto('/') }
 </script>
@@ -17,7 +16,6 @@
     <Breadcrumb />
   </div>
   <div class="topbar-actions">
-    <SearchBox placeholder="Search papers…" />
     <button class="icon-btn" onclick={toggleTheme} aria-label="Toggle theme">
       {#if $theme === 'dark'}
         <Sun size={25} />
