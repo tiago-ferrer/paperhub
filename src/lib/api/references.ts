@@ -1,5 +1,5 @@
 import { api, makeApi } from './client'
-import type { Reference, CreateReferencePayload, PatchReferencePayload, PageResult, BibImportResult } from '$lib/types/reference'
+import type { Reference, CreateReferencePayload, PatchReferencePayload, PageResult, BibImportResult, ReferenceSearchResult } from '$lib/types/reference'
 import type { Viewer } from '$lib/types/viewer'
 
 const BASE = '/api/v1/references'
@@ -13,6 +13,13 @@ export function makeReferencesApi(fetchFn?: typeof fetch) {
       if (folderId)  params.set('folderId', folderId)
       return a.get<PageResult<Reference>>(`${BASE}?${params}`)
     },
+    // Semantic search over the caller's own references (owner-only, no folder scoping).
+    // Note: query params are `q`/`topK` — NOT snake_cased, unlike JSON body/response fields.
+    search: (q: string, topK = 20) => {
+      const params = new URLSearchParams({ q, topK: String(topK) })
+      return a.get<ReferenceSearchResult[]>(`${BASE}/search?${params}`)
+    },
+
     get:         (id: string)                                   => a.get<Reference>(`${BASE}/${id}`),
     create:      (payload: CreateReferencePayload)              => a.post<Reference>(BASE, payload),
     replace:     (id: string, payload: CreateReferencePayload)  => a.put<Reference>(`${BASE}/${id}`, payload),

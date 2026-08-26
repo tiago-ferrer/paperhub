@@ -5,10 +5,11 @@
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
   import { folders } from '$lib/stores/folders'
-  import type { Reference } from '$lib/types/reference'
+  import type { Reference, ReferenceSearchResult } from '$lib/types/reference'
   import type { ReferenceFolder } from '$lib/types/folder'
   import Button from '$lib/components/ui/Button.svelte'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
+  import Spinner from '$lib/components/ui/Spinner.svelte'
   import EmptyState from '$lib/components/data/EmptyState.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Pagination from '$lib/components/data/Pagination.svelte'
@@ -16,7 +17,7 @@
   import FromBibTexModal from '$lib/components/references/FromBibTexModal.svelte'
   import ImportBibModal from '$lib/components/references/ImportBibModal.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3, FileUp, FolderOpen, FolderX } from 'lucide-svelte'
+  import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3, FileUp, FolderOpen, FolderX, Search, X } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
@@ -79,10 +80,71 @@
   })
 
   function onFolderSelect(id: string | null) {
+    clearSearch() // search covers the whole library, independent of folders — leave it before switching
     if (!id)              goto('/references')
     else if (id === 'unfiled') goto('/references?folderId=unfiled')
     else                  goto(`/references?folderId=${id}`)
   }
+
+  // ── Semantic search ─────────────────────────────────────────────────────────
+  // Ephemeral, separate from the paginated list: different response shape
+  // (ReferenceSearchResult[] wrapping {reference, score} vs PageResult<Reference>),
+  // owner-only, no folder scoping, no pagination.
+  // Triggered explicitly (button / Enter), not on every keystroke — this hits an
+  // embedding-model call server-side per request.
+  const MIN_QUERY_LEN = 2
+
+  let searchQuery    = $state('')  // live input value
+  let submittedQuery = $state('')  // last query actually searched for
+  let searchResults  = $state<ReferenceSearchResult[] | null>(null)
+  let searching      = $state(false)
+  let searchError    = $state<string | null>(null)
+  let searchSeq      = 0 // guards against an older in-flight request overwriting a newer one
+
+  const canSearch     = $derived(searchQuery.trim().length >= MIN_QUERY_LEN && !searching)
+  const isSearchActive = $derived(submittedQuery.trim().length >= MIN_QUERY_LEN)
+
+  function submitSearch() {
+    const q = searchQuery.trim()
+    if (q.length < MIN_QUERY_LEN || searching) return
+    submittedQuery = q
+    runSearch(q)
+  }
+
+  function clearSearch() {
+    searchQuery = ''
+    submittedQuery = ''
+    searchResults = null
+    searchError = null
+    searching = false
+  }
+
+  function onSearchKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') submitSearch()
+  }
+
+  async function runSearch(q: string) {
+    const seq = ++searchSeq
+    searching = true
+    try {
+      const results = await referencesApi.search(q)
+      if (seq !== searchSeq) return // a newer search superseded this one
+      searchResults = results
+      searchError = null
+    } catch (e) {
+      if (seq !== searchSeq) return
+      searchResults = []
+      if (e instanceof ApiError && e.status === 400) {
+        searchError = 'Busca inválida.'
+      } else {
+        searchError = 'Não foi possível buscar agora, tente novamente.'
+      }
+    } finally {
+      if (seq === searchSeq) searching = false
+    }
+  }
+
+  const searchReferences = $derived((searchResults ?? []).map(r => r.reference))
 
   // ── Filters (only used when no folder active) ──────────────────────────────
   type Filter = 'all' | 'owner' | 'shared'
@@ -95,6 +157,10 @@
     if (filter === 'shared') return items.filter(p => p.role === 'VIEWER')
     return items
   })
+
+  // Rows actually rendered by the table/cards — search results (already ranked, owner-only)
+  // take over from the paginated+filtered list while a search query is active.
+  const rows = $derived(isSearchActive ? searchReferences : filtered)
 
   // ── Delete ────────────────────────────────────────────────────────────────
   let deleteTarget = $state<Reference | null>(null)
@@ -112,6 +178,8 @@
         duration: 8000,
         action: { label: 'Undo', onClick: () => undoDelete(target, tid) },
       })
+      // Search results are a separate cache — invalidateAll() only refreshes the paginated list.
+      if (searchResults) searchResults = searchResults.filter(r => r.reference.id !== target.id)
       await invalidateAll()
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : 'Failed to delete')
@@ -211,6 +279,28 @@
     </div>
   </div>
 
+  <!-- Semantic search — searches the caller's own library only, ignores folder scoping -->
+  <div class="search-bar">
+    <Search size={18} class="search-icon" />
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Search by meaning across your whole library…"
+      bind:value={searchQuery}
+      onkeydown={onSearchKeydown}
+      aria-label="Semantic search"
+    />
+    {#if searchQuery}
+      <button class="search-clear" title="Clear search" onclick={clearSearch}>
+        <X size={16} />
+      </button>
+    {/if}
+    <Button size="sm" disabled={!canSearch} loading={searching} onclick={submitSearch}>
+      {#if !searching}<Search size={16} />{/if}
+      Search
+    </Button>
+  </div>
+
   <div class="body">
     <!-- Folder sidebar -->
     <aside class="folder-sidebar">
@@ -224,7 +314,9 @@
     <!-- Main content -->
     <div class="content">
       <!-- Breadcrumb -->
-      {#if activeFolderName}
+      {#if isSearchActive}
+        <p class="breadcrumb">Searching your whole library for "{submittedQuery}" (folders and shared-with-me are not included)</p>
+      {:else if activeFolderName}
         <p class="breadcrumb">📁 {activeFolderName}</p>
       {:else if data.folderId === 'unfiled'}
         <p class="breadcrumb">Unfiled references</p>
@@ -232,7 +324,7 @@
 
       <!-- Toolbar -->
       <div class="toolbar">
-        {#if !data.folderId}
+        {#if !data.folderId && !isSearchActive}
           <div class="filters">
             {#each (['all', 'owner', 'shared'] as Filter[]) as f}
               <button class="filter-chip" class:active={filter === f} onclick={() => filter = f}>
@@ -268,8 +360,15 @@
         </div>
       </div>
 
-      {#if filtered.length === 0}
-        <EmptyState title={emptyTitle} message={emptyMessage} />
+      {#if isSearchActive && searching && !searchResults}
+        <div class="search-loading"><Spinner size={22} /> <span>Searching your library…</span></div>
+      {:else if isSearchActive && searchError}
+        <EmptyState title="Search failed" message={searchError} />
+      {:else if rows.length === 0}
+        <EmptyState
+          title={isSearchActive ? `Nenhum resultado encontrado para "${submittedQuery}"` : emptyTitle}
+          message={isSearchActive ? '' : emptyMessage}
+        />
       {:else}
         <!-- Desktop table -->
         <div class="table-wrapper desktop-only">
@@ -287,7 +386,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each filtered as reference (reference.id)}
+              {#each rows as reference (reference.id)}
                 <tr
                   draggable="true"
                   ondragstart={(e) => onRefDragStart(e, reference.id)}
@@ -360,7 +459,7 @@
 
         <!-- Mobile cards -->
         <div class="card-list mobile-only">
-          {#each filtered as reference (reference.id)}
+          {#each rows as reference (reference.id)}
             <div
               class="paper-card"
               draggable="true"
@@ -405,22 +504,24 @@
           {/each}
         </div>
 
-        <Pagination
-          page={data.page}
-          hasNext={!!data.references.next_token}
-          nextToken={data.references.next_token}
-          onprev={() => {
-            const p = new URLSearchParams({ page: String(Math.max(0, data.page - 1)) })
-            if (data.folderId) p.set('folderId', data.folderId)
-            goto(`/references?${p}`)
-          }}
-          onnext={() => {
-            const p = new URLSearchParams({ page: String(data.page + 1) })
-            if (data.references.next_token) p.set('next_token', data.references.next_token)
-            if (data.folderId) p.set('folderId', data.folderId)
-            goto(`/references?${p}`)
-          }}
-        />
+        {#if !isSearchActive}
+          <Pagination
+            page={data.page}
+            hasNext={!!data.references.next_token}
+            nextToken={data.references.next_token}
+            onprev={() => {
+              const p = new URLSearchParams({ page: String(Math.max(0, data.page - 1)) })
+              if (data.folderId) p.set('folderId', data.folderId)
+              goto(`/references?${p}`)
+            }}
+            onnext={() => {
+              const p = new URLSearchParams({ page: String(data.page + 1) })
+              if (data.references.next_token) p.set('next_token', data.references.next_token)
+              if (data.folderId) p.set('folderId', data.folderId)
+              goto(`/references?${p}`)
+            }}
+          />
+        {/if}
       {/if}
     </div>
   </div>
@@ -448,6 +549,31 @@
   .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 16px; }
   .page-header h1 { margin: 0; font-size: 1.375rem; font-weight: 500; line-height: 1.3; }
   .header-actions { display: flex; align-items: center; gap: 8px; }
+
+  /* Semantic search */
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; margin-bottom: 16px;
+    background: var(--color-surface-0); border: 1px solid var(--color-surface-3);
+    border-radius: 10px;
+  }
+  .search-bar :global(.search-icon) { color: var(--color-text-secondary); flex-shrink: 0; }
+  .search-input {
+    flex: 1; border: none; background: transparent; outline: none;
+    font-size: 0.9375rem; color: var(--color-text-primary);
+  }
+  .search-input::placeholder { color: var(--color-text-disabled); }
+  .search-clear {
+    display: flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; border-radius: 50%; border: none; cursor: pointer;
+    background: transparent; color: var(--color-text-secondary);
+    transition: background var(--transition-standard);
+  }
+  .search-clear:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+  .search-loading {
+    display: flex; align-items: center; gap: 10px; justify-content: center;
+    padding: 48px 24px; color: var(--color-text-secondary); font-size: 0.875rem;
+  }
 
   /* Two-column body */
   .body { display: flex; gap: 16px; align-items: flex-start; }

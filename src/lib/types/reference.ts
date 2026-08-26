@@ -133,3 +133,10 @@ export interface PageResult<T> {
   size: number
   next_token?: string
 }
+
+// Semantic search — owner-only, no pagination. `score` is a COSINE distance
+// (lower = more similar), already sorted best-first by the backend.
+export interface ReferenceSearchResult {
+  reference: Reference
+  score: number
+}
