@@ -16,8 +16,9 @@
   import FolderTree from '$lib/components/references/FolderTree.svelte'
   import FromBibTexModal from '$lib/components/references/FromBibTexModal.svelte'
   import ImportBibModal from '$lib/components/references/ImportBibModal.svelte'
+  import DownloadFolderPanel from '$lib/components/references/DownloadFolderPanel.svelte'
   import { formatDate } from '$lib/utils/format'
-  import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3, FileUp, FolderOpen, FolderX, Search, X } from 'lucide-svelte'
+  import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3, FileUp, FolderOpen, FolderX, Search, X, Download } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
@@ -78,6 +79,11 @@
     if (!data.folderId || data.folderId === 'unfiled') return null
     return folderPath(data.folderId, $folders).join(' › ') || null
   })
+
+  // Label shown in the download panel — covers the "unfiled" pseudo-folder too, unlike activeFolderName.
+  const downloadFolderLabel = $derived(
+    data.folderId === 'unfiled' ? 'Unfiled references' : (activeFolderName ?? ''),
+  )
 
   function onFolderSelect(id: string | null) {
     clearSearch() // search covers the whole library, independent of folders — leave it before switching
@@ -246,8 +252,9 @@
   }
 
   // ── Modals ────────────────────────────────────────────────────────────────
-  let showFromBibTex = $state(false)
-  let showImportBib  = $state(false)
+  let showFromBibTex     = $state(false)
+  let showImportBib      = $state(false)
+  let showDownloadFolder = $state(false)
 
   // Venue: journal > booktitle > publisher > —
   function venue(r: Reference): string {
@@ -336,27 +343,36 @@
           <div></div>
         {/if}
 
-        <!-- Column picker -->
-        <div class="col-picker-wrap desktop-only">
-          <button
-            class="col-picker-btn"
-            class:active={showColPicker}
-            onclick={() => showColPicker = !showColPicker}
-            title="Choose columns"
-          >
-            <Columns3 size={16} />
-            Columns
-          </button>
-          {#if showColPicker}
-            <div class="col-picker-dropdown">
-              {#each COLUMNS as c}
-                <label class="col-option">
-                  <input type="checkbox" checked={visibleCols.has(c.key)} onchange={() => toggleCol(c.key)} />
-                  {c.label}
-                </label>
-              {/each}
-            </div>
+        <div class="toolbar-right">
+          <!-- Download folder — only when browsing an actual folder (incl. Unfiled), not during search -->
+          {#if data.folderId && !isSearchActive}
+            <Button variant="outlined" size="sm" onclick={() => showDownloadFolder = true}>
+              <Download size={16} /> Baixar pasta
+            </Button>
           {/if}
+
+          <!-- Column picker -->
+          <div class="col-picker-wrap desktop-only">
+            <button
+              class="col-picker-btn"
+              class:active={showColPicker}
+              onclick={() => showColPicker = !showColPicker}
+              title="Choose columns"
+            >
+              <Columns3 size={16} />
+              Columns
+            </button>
+            {#if showColPicker}
+              <div class="col-picker-dropdown">
+                {#each COLUMNS as c}
+                  <label class="col-option">
+                    <input type="checkbox" checked={visibleCols.has(c.key)} onchange={() => toggleCol(c.key)} />
+                    {c.label}
+                  </label>
+                {/each}
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
 
@@ -534,6 +550,13 @@
 />
 <FromBibTexModal open={showFromBibTex} onclose={() => showFromBibTex = false} />
 
+<DownloadFolderPanel
+  open={showDownloadFolder}
+  folderId={data.folderId === 'unfiled' ? null : data.folderId}
+  folderLabel={downloadFolderLabel}
+  onclose={() => showDownloadFolder = false}
+/>
+
 <DestructiveConfirmDialog
   open={!!deleteTarget}
   title="Delete reference?"
@@ -594,6 +617,7 @@
   }
 
   .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .toolbar-right { display: flex; align-items: center; gap: 8px; }
   .filters { display: flex; gap: 8px; flex-wrap: wrap; }
   .filter-chip {
     padding: 6px 16px; border-radius: 20px; border: 1px solid var(--color-surface-3);
