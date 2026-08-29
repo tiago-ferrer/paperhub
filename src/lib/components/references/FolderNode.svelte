@@ -1,4 +1,4 @@
-<script module>
+<script module lang="ts">
   // Shared across all FolderNode instances during a single drag gesture
   let draggingFolderId: string | null = null
 </script>
