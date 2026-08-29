@@ -1,8 +1,11 @@
-import { api, makeApi } from './client'
+import { get } from 'svelte/store'
+import { api, makeApi, ApiError } from './client'
+import { authStore } from '$lib/stores/auth'
 import type { Reference, CreateReferencePayload, PatchReferencePayload, PageResult, BibImportResult, ReferenceSearchResult } from '$lib/types/reference'
 import type { Viewer } from '$lib/types/viewer'
 
 const BASE = '/api/v1/references'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export function makeReferencesApi(fetchFn?: typeof fetch) {
   const a = fetchFn ? makeApi(fetchFn) : api
@@ -60,3 +63,60 @@ export function makeReferencesApi(fetchFn?: typeof fetch) {
 }
 
 export const referencesApi = makeReferencesApi()
+
+export type FolderDownloadMode = 'original' | 'annotated'
+
+export interface FolderDownload {
+  blob: Blob
+  filename: string
+}
+
+/**
+ * Downloads the zip of a folder's active attachments built by GET /references/download.
+ * Raw fetch, not the makeApi() client (which always parses JSON) — this endpoint streams a
+ * zip body. Reads it via a stream reader instead of res.blob() so onProgress can report live
+ * bytes-received while the server is still building the zip (no Content-Length up front).
+ */
+export async function downloadFolderZip(
+  folderId: string,
+  mode: FolderDownloadMode,
+  opts: { onProgress?: (bytesReceived: number) => void; signal?: AbortSignal } = {},
+): Promise<FolderDownload> {
+  const auth = get(authStore)
+  const headers = new Headers()
+  if (auth.token) headers.set('Authorization', `Bearer ${auth.token}`)
+
+  const params = new URLSearchParams({ folderId, mode })
+  const res = await fetch(`${BASE_URL}${BASE}/download?${params}`, { headers, signal: opts.signal })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    let body: Record<string, unknown> = {}
+    try { body = JSON.parse(text) } catch { /* not json */ }
+    throw new ApiError(res.status, String(body.error ?? 'UNKNOWN'), String(body.message ?? (text || 'Download failed')))
+  }
+
+  const filename = filenameFromContentDisposition(res.headers.get('Content-Disposition')) ?? 'references.zip'
+
+  if (!res.body) {
+    return { blob: await res.blob(), filename }
+  }
+
+  const reader = res.body.getReader()
+  const chunks: Uint8Array[] = []
+  let received = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    chunks.push(value)
+    received += value.length
+    opts.onProgress?.(received)
+  }
+  return { blob: new Blob(chunks, { type: 'application/zip' }), filename }
+}
+
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null
+  const match = /filename="?([^";]+)"?/.exec(header)
+  return match ? match[1] : null
+}
