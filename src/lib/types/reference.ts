@@ -127,11 +127,12 @@ export interface BibImportResult {
   skipped_references: BibImportSkipped[]
 }
 
+// No total/count field and no cursor — GET /references does real page*size offset pagination,
+// so `hasNext` must be inferred from `items.length === size` (see references +page.svelte).
 export interface PageResult<T> {
   items: T[]
   page: number
   size: number
-  next_token?: string
 }
 
 // Semantic search — owner-only, no pagination. `score` is a COSINE distance

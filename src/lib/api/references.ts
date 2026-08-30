@@ -10,10 +10,12 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 export function makeReferencesApi(fetchFn?: typeof fetch) {
   const a = fetchFn ? makeApi(fetchFn) : api
   return {
-    list: (page = 0, size = 20, nextToken?: string, folderId?: string) => {
+    // GET /references does real offset pagination (page*size) server-side — it has no
+    // next_token/cursor param (any next_token sent is silently ignored by the backend,
+    // and the response's cursor field is always null). Don't reintroduce one here.
+    list: (page = 0, size = 20, folderId?: string) => {
       const params = new URLSearchParams({ page: String(page), size: String(size) })
-      if (nextToken) params.set('next_token', nextToken)
-      if (folderId)  params.set('folderId', folderId)
+      if (folderId) params.set('folderId', folderId)
       return a.get<PageResult<Reference>>(`${BASE}?${params}`)
     },
     // Semantic search over the caller's own references (owner-only, no folder scoping).

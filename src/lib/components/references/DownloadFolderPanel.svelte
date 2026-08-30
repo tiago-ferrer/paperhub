@@ -48,10 +48,11 @@
     errorMessage = ''
     try {
       let page = 0
-      let nextToken: string | undefined
       let refs = 0, attachments = 0, fallbacks = 0
+      // No cursor — GET /references paginates by real page*size offset, so a short
+      // (< requested size) page is the signal that this was the last one.
       for (;;) {
-        const result = await referencesApi.list(page, 100, nextToken, apiFolderId)
+        const result = await referencesApi.list(page, 100, apiFolderId)
         for (const reference of result.items) {
           refs++
           for (const attach of reference.attachments) {
@@ -60,8 +61,7 @@
             if (attach.annotation_key === null) fallbacks++
           }
         }
-        if (!result.next_token) break
-        nextToken = result.next_token
+        if (result.items.length < 100) break
         page++
       }
       refCount = refs
