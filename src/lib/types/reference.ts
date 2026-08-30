@@ -121,10 +121,31 @@ export interface BibImportSkipped {
   existing_id: string
 }
 
+export interface BibImportFailed {
+  citation_key: string
+  reason: string
+}
+
 export interface BibImportResult {
   added: number
   skipped: number
   skipped_references: BibImportSkipped[]
+  failed_entries: BibImportFailed[]
+}
+
+// Async import job — POST /references/import returns one immediately (status PENDING),
+// GET /references/import/{job_id} polls it. `result` is populated only once COMPLETED;
+// `error_message` only once FAILED (reserved for a fatal error outside the per-entry loop —
+// a single bad entry doesn't fail the job, it shows up in result.failed_entries instead).
+export type BibImportJobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'
+
+export interface BibImportJob {
+  job_id: string
+  status: BibImportJobStatus
+  total: number
+  processed: number
+  result: BibImportResult | null
+  error_message?: string
 }
 
 // No total/count field and no cursor — GET /references does real page*size offset pagination,
