@@ -521,10 +521,11 @@
         </div>
 
         {#if !isSearchActive}
+          <!-- Backend has no cursor/total — GET /references does real page*size offset paging,
+               so a full page (== 20 items) is our only signal that a next page may exist. -->
           <Pagination
             page={data.page}
-            hasNext={!!data.references.next_token}
-            nextToken={data.references.next_token}
+            hasNext={data.references.items.length === 20}
             onprev={() => {
               const p = new URLSearchParams({ page: String(Math.max(0, data.page - 1)) })
               if (data.folderId) p.set('folderId', data.folderId)
@@ -532,7 +533,6 @@
             }}
             onnext={() => {
               const p = new URLSearchParams({ page: String(data.page + 1) })
-              if (data.references.next_token) p.set('next_token', data.references.next_token)
               if (data.folderId) p.set('folderId', data.folderId)
               goto(`/references?${p}`)
             }}
