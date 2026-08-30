@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { page } from '$app/stores'
+  import { page, navigating } from '$app/stores'
   import { fly } from 'svelte/transition'
   import { cubicOut } from 'svelte/easing'
   import { sidebarCollapsed, sidebarMobileOpen, closeMobileSidebar } from '$lib/stores/ui'
   import Sidebar from '$lib/components/layout/Sidebar.svelte'
   import TopBar from '$lib/components/layout/TopBar.svelte'
+  import NavLoadingOverlay from '$lib/components/layout/NavLoadingOverlay.svelte'
   import ToastStack from '$lib/components/ui/ToastStack.svelte'
   import type { Snippet } from 'svelte'
 
@@ -23,11 +24,16 @@
     class:collapsed={$sidebarCollapsed}
   >
     <TopBar />
-    {#key $page.url.pathname}
-      <main class="content" in:fly={{ y: 12, duration: 180, easing: cubicOut }}>
-        {@render children()}
-      </main>
-    {/key}
+    <div class="content-area">
+      {#key $page.url.pathname}
+        <main class="content" in:fly={{ y: 12, duration: 180, easing: cubicOut }}>
+          {@render children()}
+        </main>
+      {/key}
+      {#if $navigating}
+        <NavLoadingOverlay />
+      {/if}
+    </div>
   </div>
 
   <ToastStack />
@@ -52,6 +58,8 @@
     position: fixed; inset: 0; z-index: 39;
     background: rgba(0,0,0,0.4);
   }
+
+  .content-area { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
   .content { flex: 1; padding: 24px; overflow-y: auto; overflow-x: hidden; }
 

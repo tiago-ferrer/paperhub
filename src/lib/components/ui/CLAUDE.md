@@ -17,7 +17,8 @@ User avatar circle showing initials or image. Props: `name`, `src?`, `size`.
 Colored status pill — used for transcription statuses (`PENDING`, `PROCESSING`, `DONE`, `FAILED`), soft-delete state, etc.
 
 ### `Spinner.svelte`
-Loading spinner. Props: `size` (px), `class`.
+Loading spinner. Props: `size` (px), `class`. Used standalone and inside
+`layout/NavLoadingOverlay.svelte` for the global route-loading veil.
 
 ### `Divider.svelte`
 Horizontal rule with optional label. Props: `label?`.
