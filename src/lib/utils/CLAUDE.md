@@ -28,3 +28,8 @@ Pure utility functions with no side effects and no Svelte dependencies.
 ### `validate.ts`
 - Field validation helpers (email, URL, required)
 - Returns error strings or null
+
+### `settle.ts`
+- `settle<T>(promise: Promise<T>): Promise<Settled<T>>` — wraps a promise so it resolves to `{ data: T, error: null }` or `{ data: null, error: Error }` instead of rejecting
+- Used in `+page.ts`/`+layout.ts` loaders to keep one independent data source from taking down an entire page — see "Falha parcial em loaders" in `src/routes/(app)/CLAUDE.md`
+- Pairs with `$lib/components/data/SectionError.svelte` for the UI side

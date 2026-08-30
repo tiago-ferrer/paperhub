@@ -3,6 +3,6 @@
   import { onMount } from 'svelte'
 
   onMount(() => {
-    goto('/mcp/usage', { replaceHistory: true })
+    goto('/mcp/usage', { replaceState: true })
   })
 </script>

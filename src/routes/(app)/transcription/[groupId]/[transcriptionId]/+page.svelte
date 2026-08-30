@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types'
-  import { goto } from '$app/navigation'
+  import { goto, invalidateAll } from '$app/navigation'
   import { transcriptionApi } from '$lib/api/transcription'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
@@ -10,6 +10,7 @@
   import LanguageSelector from '$lib/components/forms/LanguageSelector.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
   import MarkdownContent from '$lib/components/ui/MarkdownContent.svelte'
+  import SectionError from '$lib/components/data/SectionError.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import { renderMarkdown, stripMarkdown } from '$lib/utils/markdown'
   import { formatDate } from '$lib/utils/format'
@@ -523,7 +524,9 @@
       {/if}
 
       <!-- Note list -->
-      {#if notes.length === 0 && !showNoteForm}
+      {#if data.notes.error}
+        <SectionError label="Notes" onretry={() => invalidateAll()} />
+      {:else if notes.length === 0 && !showNoteForm}
         <p class="notes-empty">
           No notes yet.
           {#if canGenerate && hasNotePrompt}Use <em>Generate with AI</em> or{:else}Click{/if}

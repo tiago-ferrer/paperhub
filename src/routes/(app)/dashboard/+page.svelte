@@ -1,15 +1,16 @@
 <script lang="ts">
   import type { PageData } from './$types'
-  import { goto } from '$app/navigation'
+  import { goto, invalidateAll } from '$app/navigation'
   import StatusChip from '$lib/components/ui/StatusChip.svelte'
   import Button from '$lib/components/ui/Button.svelte'
+  import SectionError from '$lib/components/data/SectionError.svelte'
   import { formatDate } from '$lib/utils/format'
   import { stripMarkdown } from '$lib/utils/markdown'
   import { FileText, Plus, BookOpen, NotebookPen, ScrollText } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
-  const ownerCount = $derived(data.recentReferences.filter(p => p.role === 'OWNER').length)
+  const ownerCount = $derived(data.recentReferences.items.filter(p => p.role === 'OWNER').length)
 </script>
 
 <div class="page">
@@ -25,28 +26,28 @@
     <div class="stat-card">
       <div class="stat-icon"><FileText size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{data.recentReferences.length}</p>
+        <p class="stat-value">{data.recentReferences.error ? '—' : data.recentReferences.items.length}</p>
         <p class="stat-label">Recent References</p>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon owner"><BookOpen size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{ownerCount}</p>
+        <p class="stat-value">{data.recentReferences.error ? '—' : ownerCount}</p>
         <p class="stat-label">As Owner</p>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon notebooks"><NotebookPen size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{data.notebookCount}</p>
+        <p class="stat-value">{data.notebooks.error ? '—' : data.notebooks.notebookCount}</p>
         <p class="stat-label">Notebooks</p>
       </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon posts"><ScrollText size={26} /></div>
       <div class="stat-body">
-        <p class="stat-value">{data.totalPosts}</p>
+        <p class="stat-value">{data.notebooks.error ? '—' : data.notebooks.totalPosts}</p>
         <p class="stat-label">Total Posts</p>
       </div>
     </div>
@@ -59,13 +60,15 @@
         <h2 class="section-title">Latest Posts</h2>
         <a href="/notebooks" class="section-link">All notebooks →</a>
       </div>
-      {#if data.latestPosts.length === 0}
+      {#if data.notebooks.error}
+        <SectionError label="Latest posts" onretry={() => invalidateAll()} />
+      {:else if data.notebooks.latestPosts.length === 0}
         <div class="empty">
           <p>No posts yet. <a href="/notebooks/new">Create a notebook</a></p>
         </div>
       {:else}
         <div class="item-cards">
-          {#each data.latestPosts as { post, notebook }}
+          {#each data.notebooks.latestPosts as { post, notebook }}
             <a href="/notebooks/{notebook.id}/posts/{post.id}" class="item-card">
               <div class="item-card-top">
                 <span class="item-title">{post.title}</span>
@@ -89,13 +92,15 @@
         <h2 class="section-title">Recent References</h2>
         <a href="/references" class="section-link">All references →</a>
       </div>
-      {#if data.recentReferences.length === 0}
+      {#if data.recentReferences.error}
+        <SectionError label="Recent references" onretry={() => invalidateAll()} />
+      {:else if data.recentReferences.items.length === 0}
         <div class="empty">
           <p>No references yet. <a href="/references/new">Add your first reference</a></p>
         </div>
       {:else}
         <div class="item-cards">
-          {#each data.recentReferences as reference}
+          {#each data.recentReferences.items as reference}
             <a href="/references/{reference.id}" class="item-card">
               <div class="item-card-top">
                 <span class="item-title">{reference.title}</span>

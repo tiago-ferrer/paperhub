@@ -22,9 +22,6 @@
 
   let { data }: { data: PageData } = $props()
 
-  // Sync server-loaded folder tree into the store on every navigation
-  $effect(() => { folders.restore(data.folderTree) })
-
   // ── Column picker ──────────────────────────────────────────────────────────
   const COLUMNS = [
     { key: 'type',    label: 'Type' },

@@ -17,6 +17,11 @@ Page navigation controls. Props: `page: number`, `total: number`, `size: number`
 
 Displays `"Showing X–Y of Z"` and prev/next buttons. Works with the `PageResult<T>` response shape from the API.
 
+### `SectionError.svelte`
+Inline failure for one section/widget of a page, paired with `$lib/utils/settle.ts` in the loader. Props: `label` (section name, used in the default message), `message?` (override), `onretry?` (shows a "Try again" action).
+
+Use this instead of letting a degradable loader call throw into the page-wide `+error.svelte` — see "Falha parcial em loaders" in `src/routes/(app)/CLAUDE.md`.
+
 ## Pagination Pattern
 
 ```svelte

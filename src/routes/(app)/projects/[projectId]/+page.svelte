@@ -13,6 +13,7 @@
   import SlideOver from '$lib/components/dialogs/SlideOver.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import Modal from '$lib/components/dialogs/Modal.svelte'
+  import SectionError from '$lib/components/data/SectionError.svelte'
   import { formatDate } from '$lib/utils/format'
   import {
     Plus, Pencil, X, NotebookPen, Mic, FileText,
@@ -79,19 +80,19 @@
 
   function entityName(item: ProjectItem): string {
     if (item.type === 'NOTEBOOK') {
-      return data.notebooks.find(n => n.id === item.entity_id)?.title ?? item.entity_id
+      return data.notebooks.items.find(n => n.id === item.entity_id)?.title ?? item.entity_id
     }
     if (item.type === 'TRANSCRIPTION_GROUP') {
-      return data.groups.find(g => g.id === item.entity_id)?.name ?? item.entity_id
+      return data.groups.items.find(g => g.id === item.entity_id)?.name ?? item.entity_id
     }
     if (item.type === 'PAPER') {
-      return data.references.find(p => p.id === item.entity_id)?.title ?? item.entity_id
+      return data.references.items.find(p => p.id === item.entity_id)?.title ?? item.entity_id
     }
     if (item.type === 'KANBAN_BOARD') {
-      return data.boards.find(b => b.id === item.entity_id)?.title ?? item.entity_id
+      return data.boards.items.find(b => b.id === item.entity_id)?.title ?? item.entity_id
     }
     if (item.type === 'GANTT_CHART') {
-      return data.ganttCharts.find(c => c.id === item.entity_id)?.title ?? item.entity_id
+      return data.ganttCharts.items.find(c => c.id === item.entity_id)?.title ?? item.entity_id
     }
     // NOTEBOOK_POST and TRANSCRIPTION resolved async
     return resolvedNames[item.entity_id] ?? item.entity_id
@@ -337,114 +338,138 @@
     <!-- Entity list -->
     <div class="entity-list">
       {#if addType === 'NOTEBOOK'}
-        {#each data.notebooks as nb}
-          {@const alreadyAdded = addedIds.has(nb.id)}
-          <button
-            class="entity-row"
-            class:selected={addEntityId === nb.id}
-            class:already-added={alreadyAdded}
-            disabled={alreadyAdded}
-            onclick={() => addEntityId = addEntityId === nb.id ? null : nb.id}
-          >
-            <NotebookPen size={18} />
-            <span class="entity-label">{nb.title}</span>
-            {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
-          </button>
-        {/each}
-        {#if data.notebooks.length === 0}
-          <p class="empty-list">No notebooks found.</p>
+        {#if data.notebooks.error}
+          <SectionError label="Notebooks" onretry={() => invalidateAll()} />
+        {:else}
+          {#each data.notebooks.items as nb}
+            {@const alreadyAdded = addedIds.has(nb.id)}
+            <button
+              class="entity-row"
+              class:selected={addEntityId === nb.id}
+              class:already-added={alreadyAdded}
+              disabled={alreadyAdded}
+              onclick={() => addEntityId = addEntityId === nb.id ? null : nb.id}
+            >
+              <NotebookPen size={18} />
+              <span class="entity-label">{nb.title}</span>
+              {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+            </button>
+          {/each}
+          {#if data.notebooks.items.length === 0}
+            <p class="empty-list">No notebooks found.</p>
+          {/if}
         {/if}
 
       {:else if addType === 'TRANSCRIPTION_GROUP'}
-        {#each data.groups as g}
-          {@const alreadyAdded = addedIds.has(g.id)}
-          <button
-            class="entity-row"
-            class:selected={addEntityId === g.id}
-            class:already-added={alreadyAdded}
-            disabled={alreadyAdded}
-            onclick={() => addEntityId = addEntityId === g.id ? null : g.id}
-          >
-            <Mic size={18} />
-            <span class="entity-label">{g.name}</span>
-            {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
-          </button>
-        {/each}
-        {#if data.groups.length === 0}
-          <p class="empty-list">No transcription groups found.</p>
+        {#if data.groups.error}
+          <SectionError label="Transcription groups" onretry={() => invalidateAll()} />
+        {:else}
+          {#each data.groups.items as g}
+            {@const alreadyAdded = addedIds.has(g.id)}
+            <button
+              class="entity-row"
+              class:selected={addEntityId === g.id}
+              class:already-added={alreadyAdded}
+              disabled={alreadyAdded}
+              onclick={() => addEntityId = addEntityId === g.id ? null : g.id}
+            >
+              <Mic size={18} />
+              <span class="entity-label">{g.name}</span>
+              {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+            </button>
+          {/each}
+          {#if data.groups.items.length === 0}
+            <p class="empty-list">No transcription groups found.</p>
+          {/if}
         {/if}
 
       {:else if addType === 'PAPER'}
-        {#each data.references as p}
-          {@const alreadyAdded = addedIds.has(p.id)}
-          <button
-            class="entity-row"
-            class:selected={addEntityId === p.id}
-            class:already-added={alreadyAdded}
-            disabled={alreadyAdded}
-            onclick={() => addEntityId = addEntityId === p.id ? null : p.id}
-          >
-            <FileText size={18} />
-            <span class="entity-label">{p.title}</span>
-            {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
-          </button>
-        {/each}
-        {#if data.references.length === 0}
-          <p class="empty-list">No references found.</p>
+        {#if data.references.error}
+          <SectionError label="Papers" onretry={() => invalidateAll()} />
+        {:else}
+          {#each data.references.items as p}
+            {@const alreadyAdded = addedIds.has(p.id)}
+            <button
+              class="entity-row"
+              class:selected={addEntityId === p.id}
+              class:already-added={alreadyAdded}
+              disabled={alreadyAdded}
+              onclick={() => addEntityId = addEntityId === p.id ? null : p.id}
+            >
+              <FileText size={18} />
+              <span class="entity-label">{p.title}</span>
+              {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+            </button>
+          {/each}
+          {#if data.references.items.length === 0}
+            <p class="empty-list">No references found.</p>
+          {/if}
         {/if}
 
       {:else if addType === 'KANBAN_BOARD'}
-        {#each data.boards as board}
-          {@const alreadyAdded = addedIds.has(board.id)}
-          <button
-            class="entity-row"
-            class:selected={addEntityId === board.id}
-            class:already-added={alreadyAdded}
-            disabled={alreadyAdded}
-            onclick={() => addEntityId = addEntityId === board.id ? null : board.id}
-          >
-            <KanbanSquare size={18} />
-            <span class="entity-label">{board.title}</span>
-            {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
-          </button>
-        {/each}
-        {#if data.boards.length === 0}
-          <p class="empty-list">No kanban boards found.</p>
+        {#if data.boards.error}
+          <SectionError label="Kanban boards" onretry={() => invalidateAll()} />
+        {:else}
+          {#each data.boards.items as board}
+            {@const alreadyAdded = addedIds.has(board.id)}
+            <button
+              class="entity-row"
+              class:selected={addEntityId === board.id}
+              class:already-added={alreadyAdded}
+              disabled={alreadyAdded}
+              onclick={() => addEntityId = addEntityId === board.id ? null : board.id}
+            >
+              <KanbanSquare size={18} />
+              <span class="entity-label">{board.title}</span>
+              {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+            </button>
+          {/each}
+          {#if data.boards.items.length === 0}
+            <p class="empty-list">No kanban boards found.</p>
+          {/if}
         {/if}
 
       {:else if addType === 'GANTT_CHART'}
-        {#each data.ganttCharts as chart}
-          {@const alreadyAdded = addedIds.has(chart.id)}
-          <button
-            class="entity-row"
-            class:selected={addEntityId === chart.id}
-            class:already-added={alreadyAdded}
-            disabled={alreadyAdded}
-            onclick={() => addEntityId = addEntityId === chart.id ? null : chart.id}
-          >
-            <GanttIcon size={18} />
-            <span class="entity-label">{chart.title}</span>
-            {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
-          </button>
-        {/each}
-        {#if data.ganttCharts.length === 0}
-          <p class="empty-list">No Gantt charts found.</p>
+        {#if data.ganttCharts.error}
+          <SectionError label="Gantt charts" onretry={() => invalidateAll()} />
+        {:else}
+          {#each data.ganttCharts.items as chart}
+            {@const alreadyAdded = addedIds.has(chart.id)}
+            <button
+              class="entity-row"
+              class:selected={addEntityId === chart.id}
+              class:already-added={alreadyAdded}
+              disabled={alreadyAdded}
+              onclick={() => addEntityId = addEntityId === chart.id ? null : chart.id}
+            >
+              <GanttIcon size={18} />
+              <span class="entity-label">{chart.title}</span>
+              {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+            </button>
+          {/each}
+          {#if data.ganttCharts.items.length === 0}
+            <p class="empty-list">No Gantt charts found.</p>
+          {/if}
         {/if}
 
       {:else if addType === 'NOTEBOOK_POST'}
         {#if !addParentId}
           <p class="step-hint">Step 1: Choose a notebook</p>
-          {#each data.notebooks as nb}
-            <button
-              class="entity-row"
-              onclick={() => selectParent(nb.id)}
-            >
-              <NotebookPen size={18} />
-              <span class="entity-label">{nb.title}</span>
-            </button>
-          {/each}
-          {#if data.notebooks.length === 0}
-            <p class="empty-list">No notebooks found.</p>
+          {#if data.notebooks.error}
+            <SectionError label="Notebooks" onretry={() => invalidateAll()} />
+          {:else}
+            {#each data.notebooks.items as nb}
+              <button
+                class="entity-row"
+                onclick={() => selectParent(nb.id)}
+              >
+                <NotebookPen size={18} />
+                <span class="entity-label">{nb.title}</span>
+              </button>
+            {/each}
+            {#if data.notebooks.items.length === 0}
+              <p class="empty-list">No notebooks found.</p>
+            {/if}
           {/if}
         {:else}
           <button class="back-btn" onclick={() => { addParentId = null; addEntityId = null; subEntities = [] }}>
@@ -477,17 +502,21 @@
       {:else if addType === 'TRANSCRIPTION'}
         {#if !addParentId}
           <p class="step-hint">Step 1: Choose a transcription group</p>
-          {#each data.groups as g}
-            <button
-              class="entity-row"
-              onclick={() => selectParent(g.id)}
-            >
-              <Mic size={18} />
-              <span class="entity-label">{g.name}</span>
-            </button>
-          {/each}
-          {#if data.groups.length === 0}
-            <p class="empty-list">No transcription groups found.</p>
+          {#if data.groups.error}
+            <SectionError label="Transcription groups" onretry={() => invalidateAll()} />
+          {:else}
+            {#each data.groups.items as g}
+              <button
+                class="entity-row"
+                onclick={() => selectParent(g.id)}
+              >
+                <Mic size={18} />
+                <span class="entity-label">{g.name}</span>
+              </button>
+            {/each}
+            {#if data.groups.items.length === 0}
+              <p class="empty-list">No transcription groups found.</p>
+            {/if}
           {/if}
         {:else}
           <button class="back-btn" onclick={() => { addParentId = null; addEntityId = null; subEntities = [] }}>

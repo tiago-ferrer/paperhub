@@ -1,26 +1,34 @@
 <script lang="ts">
-  import mermaid from 'mermaid'
   import { theme } from '$lib/stores/ui'
 
   let { html, class: cls = '' }: { html: string; class?: string } = $props()
 
   let container = $state<HTMLElement | null>(null)
+
+  // mermaid is a ~500KB dependency — most markdown has no diagram in it, so it's
+  // loaded on demand only when a `pre.mermaid` block actually shows up, instead of
+  // being bundled into every route that renders markdown.
+  type MermaidModule = typeof import('mermaid')['default']
+  let mermaidMod: MermaidModule | null = null
   let mermaidReady = false
 
-  function ensureInit() {
-    if (mermaidReady) return
-    mermaid.initialize({ startOnLoad: false, theme: $theme === 'dark' ? 'dark' : 'neutral' })
-    mermaidReady = true
+  async function ensureMermaid(): Promise<MermaidModule> {
+    if (!mermaidMod) {
+      mermaidMod = (await import('mermaid')).default
+    }
+    if (!mermaidReady) {
+      mermaidMod.initialize({ startOnLoad: false, theme: $theme === 'dark' ? 'dark' : 'neutral' })
+      mermaidReady = true
+    }
+    return mermaidMod
   }
 
   $effect(() => {
     void html // re-run when html changes
     if (!container) return
-    ensureInit()
     const nodes = Array.from(container.querySelectorAll<HTMLElement>('pre.mermaid'))
-    if (nodes.length) {
-      mermaid.run({ nodes }).catch(() => {})
-    }
+    if (!nodes.length) return
+    ensureMermaid().then(mermaid => mermaid.run({ nodes }).catch(() => {}))
   })
 </script>
 

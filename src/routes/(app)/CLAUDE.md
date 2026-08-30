@@ -49,3 +49,37 @@ Checks `authStore` for a valid token. If missing, redirects to `/login` using `t
 ## Soft Deletes
 
 Many resources support soft delete. When `includeDeleted` is true, deleted items appear muted with strikethrough and a restore action.
+
+## Falha parcial em loaders
+
+**Rule: any `+page.ts`/`+layout.ts` load that runs 2+ independent API calls (via `Promise.all` or otherwise) must classify each call as critical or degradable — never let a degradable call throw.**
+
+Plain `await Promise.all([...])` is all-or-nothing: if any promise rejects, the whole `load()` rejects, and SvelteKit renders the single global `src/routes/+error.svelte` in place of the *entire* page — even when only one section's data actually failed and everything else loaded fine.
+
+- **Critical** — required to render the page shell at all (e.g. `project.get(id)`, `chart.get(id)`, `getTranscription(...)`). Keep this a plain `await` outside `Promise.all` (or first in it) so a 404 still throws via `error(404, ...)`.
+- **Degradable** — feeds one section/widget; the rest of the page is still useful without it (e.g. the 5 item-type lists on a project detail page, a notes side panel, a folder tree). Wrap these in `settle()` (`$lib/utils/settle.ts`) inside the `Promise.all`, and return `{ items, error }` (or `{ data, error }`) instead of the raw value.
+
+In the `.svelte`, branch on `data.<section>.error` and render `<SectionError label="..." onretry={...} />` (`$lib/components/data/SectionError.svelte`) in place of that section, instead of an empty state (which would misleadingly look like "there's nothing here" rather than "this failed to load"). Pick `onretry` based on whether the page re-syncs local state from `data` on navigation: `invalidateAll()` when there's an `$effect` mirroring `data` into local `$state` (or no local copy at all), `location.reload()` when the page seeds local `$state` once from `data` with no re-sync (e.g. an editable canvas/grid).
+
+```ts
+// +page.ts
+const [project, ganttCharts] = await Promise.all([
+  ... /* critical: awaited/thrown before this, or handled with try/catch for 404 */
+  settle(ganttApi.listCharts()),
+])
+return {
+  project,
+  ganttCharts: { items: ganttCharts.data?.items ?? [], error: ganttCharts.error },
+}
+```
+
+```svelte
+<!-- +page.svelte -->
+{#if data.ganttCharts.error}
+  <SectionError label="Gantt charts" onretry={() => invalidateAll()} />
+{:else}
+  <!-- render data.ganttCharts.items -->
+{/if}
+```
+
+Already applied to `projects/[projectId]`, `dashboard`, `gantt/[chartId]`, and `transcription/[groupId]/[transcriptionId]` — look at those for worked examples before writing a new multi-call loader.

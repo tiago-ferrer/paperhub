@@ -10,6 +10,7 @@
   import Modal from '$lib/components/dialogs/Modal.svelte'
   import DestructiveConfirmDialog from '$lib/components/dialogs/DestructiveConfirmDialog.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
+  import SectionError from '$lib/components/data/SectionError.svelte'
   import {
     Plus, Pencil, Trash2, GripVertical, Check, X,
     GanttChart as GanttIcon, Calendar, FolderOpen
@@ -468,7 +469,9 @@
 
   <!-- Gantt body -->
   <div class="gantt-wrapper">
-    {#if sortedTasks.length === 0}
+    {#if data.tasksError}
+      <SectionError label="Tasks" onretry={() => location.reload()} />
+    {:else if sortedTasks.length === 0}
       <div class="gantt-empty">
         <Calendar size={40} />
         <p>No tasks yet — add your first task to start planning.</p>
