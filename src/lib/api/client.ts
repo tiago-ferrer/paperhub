@@ -31,11 +31,13 @@ export function makeApi(fetchFn: typeof fetch = globalThis.fetch) {
     }
 
     const url = `${BASE_URL}${path}`
-    console.log('[api]', init.method ?? 'GET', url, {
-      hasAuth: headers.has('Authorization'),
-      contentType: headers.get('Content-Type'),
-      bodyType: init.body?.constructor?.name,
-    })
+    if (import.meta.env.DEV) {
+      console.log('[api]', init.method ?? 'GET', url, {
+        hasAuth: headers.has('Authorization'),
+        contentType: headers.get('Content-Type'),
+        bodyType: init.body?.constructor?.name,
+      })
+    }
     const res = await fetchFn(url, { ...init, headers })
 
     if (res.status === 401) {
@@ -46,7 +48,7 @@ export function makeApi(fetchFn: typeof fetch = globalThis.fetch) {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      console.error('[api] error response', res.status, text)
+      if (import.meta.env.DEV) console.error('[api] error response', res.status, text)
       let body: Record<string, unknown> = {}
       try { body = JSON.parse(text) } catch { /* not json */ }
       const fields = typeof body.fields === 'object' && body.fields !== null
