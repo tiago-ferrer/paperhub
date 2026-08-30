@@ -5,9 +5,11 @@
   import { folders } from '$lib/stores/folders'
   import { ApiError } from '$lib/api/client'
   import { toast } from '$lib/stores/toast'
-  import type { BibImportResult } from '$lib/types/reference'
+  import type { BibImportResult, BibImportJob } from '$lib/types/reference'
   import Button from '$lib/components/ui/Button.svelte'
-  import { X, Upload, CheckCircle, SkipForward } from 'lucide-svelte'
+  import Spinner from '$lib/components/ui/Spinner.svelte'
+  import ProgressBar from '$lib/components/ui/ProgressBar.svelte'
+  import { X, Upload, CheckCircle, SkipForward, AlertTriangle } from 'lucide-svelte'
 
   interface Props {
     open?: boolean
@@ -17,12 +19,14 @@
   }
   let { open = false, onclose, initialFolderId = null }: Props = $props()
 
-  type Phase = 'upload' | 'done'
+  type Phase = 'upload' | 'processing' | 'done' | 'error'
 
   let phase            = $state<Phase>('upload')
   let file             = $state<File | null>(null)
-  let uploading        = $state(false)
+  let submitting       = $state(false)   // true only while the job-creation POST is in flight
+  let job              = $state<BibImportJob | null>(null)
   let result           = $state<BibImportResult | null>(null)
+  let errorMessage     = $state<string | null>(null)
   let dragOver         = $state(false)
   let fileInput        = $state<HTMLInputElement | undefined>(undefined)
   let selectedFolderId = $state<string | null>(initialFolderId)
@@ -65,10 +69,20 @@
   async function doImport() {
     if (!file) return
     folderError = null
-    uploading = true
+    errorMessage = null
+    submitting = true
     try {
-      result = await referencesApi.importBib(file, selectedFolderId ?? undefined)
-      phase = 'done'
+      job = await referencesApi.importBib(file, selectedFolderId ?? undefined)
+      if (job.status === 'COMPLETED') {
+        // Defensive: a tiny/instant import could plausibly resolve before the first poll would.
+        result = job.result
+        phase = 'done'
+      } else if (job.status === 'FAILED') {
+        errorMessage = job.error_message ?? 'Import failed. Please try again.'
+        phase = 'error'
+      } else {
+        phase = 'processing'
+      }
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) {
         folderError = 'The selected folder no longer exists. Please choose another.'
@@ -79,9 +93,33 @@
         onclose?.()
       }
     } finally {
-      uploading = false
+      submitting = false
     }
   }
+
+  // Poll the job every 2s while it's in flight — same pattern as the transcription
+  // detail page's $effect + setInterval, just a shorter interval since the user is
+  // actively watching this modal rather than a page they might navigate away from.
+  // Any transition out of 'processing' (including reset()) runs this effect's cleanup,
+  // which clears the interval — no separate cancellation flag needed.
+  $effect(() => {
+    if (phase !== 'processing' || !job) return
+    const jobId = job.job_id
+    const id = setInterval(async () => {
+      try {
+        const updated = await referencesApi.getImportJob(jobId)
+        job = updated
+        if (updated.status === 'COMPLETED') {
+          result = updated.result
+          phase = 'done'
+        } else if (updated.status === 'FAILED') {
+          errorMessage = updated.error_message ?? 'Import failed. Please try again.'
+          phase = 'error'
+        }
+      } catch { /* ignore poll errors — matches the transcription polling precedent */ }
+    }, 2000)
+    return () => clearInterval(id)
+  })
 
   async function done() {
     if (result && result.added > 0) await invalidateAll()
@@ -91,7 +129,9 @@
 
   function importAnother() {
     file = null
+    job = null
     result = null
+    errorMessage = null
     phase = 'upload'
     folderError = null
     selectedFolderId = initialFolderId
@@ -100,7 +140,9 @@
 
   function reset() {
     file = null
+    job = null
     result = null
+    errorMessage = null
     phase = 'upload'
     folderError = null
     selectedFolderId = initialFolderId
@@ -179,13 +221,28 @@
             {/if}
           </div>
 
-          {#if uploading}
-            <p class="uploading-msg">Importing your references…</p>
+        {:else if phase === 'processing' && job}
+          <div class="state-row">
+            <Spinner size={20} />
+            <span>Importing your references…</span>
+          </div>
+          {#if job.total > 0}
+            <div class="progress-spacer">
+              <ProgressBar value={job.processed} max={job.total} label="{job.processed} / {job.total} entries" />
+            </div>
+          {:else}
+            <p class="no-entries">No importable entries found in this file.</p>
           {/if}
+
+        {:else if phase === 'error'}
+          <div class="state-row error">
+            <AlertTriangle size={20} />
+            <span>{errorMessage}</span>
+          </div>
 
         {:else if phase === 'done' && result}
           <div class="results">
-            {#if result.added === 0 && result.skipped === 0}
+            {#if result.added === 0 && result.skipped === 0 && result.failed_entries.length === 0}
               <p class="no-entries">No importable entries found in this file.</p>
             {:else}
               <div class="summary">
@@ -231,6 +288,34 @@
                     </div>
                   {/if}
                 {/if}
+
+                {#if result.failed_entries.length > 0}
+                  <div class="summary-row failed">
+                    <AlertTriangle size={18} />
+                    <span>
+                      <strong>{result.failed_entries.length}</strong> entr{result.failed_entries.length === 1 ? 'y' : 'ies'} failed to process
+                    </span>
+                  </div>
+
+                  <div class="skipped-table-wrap">
+                    <table class="skipped-table">
+                      <thead>
+                        <tr>
+                          <th>Citation key</th>
+                          <th>Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {#each result.failed_entries as f}
+                          <tr>
+                            <td class="key-cell"><code>{f.citation_key}</code></td>
+                            <td class="doi-cell">{f.reason}</td>
+                          </tr>
+                        {/each}
+                      </tbody>
+                    </table>
+                  </div>
+                {/if}
               </div>
             {/if}
           </div>
@@ -240,9 +325,14 @@
       <div class="modal-footer">
         {#if phase === 'upload'}
           <Button variant="text" onclick={handleClose}>Cancel</Button>
-          <Button loading={uploading} disabled={!file || uploading} onclick={doImport}>
+          <Button loading={submitting} disabled={!file || submitting} onclick={doImport}>
             Import
           </Button>
+        {:else if phase === 'processing'}
+          <Button loading>Importing…</Button>
+        {:else if phase === 'error'}
+          <Button variant="text" onclick={handleClose}>Cancel</Button>
+          <Button onclick={doImport}>Retry</Button>
         {:else}
           <Button variant="outlined" onclick={importAnother}>Import another</Button>
           <Button onclick={done}>Done</Button>
@@ -313,9 +403,14 @@
   .folder-select.error { border-color: var(--color-error); }
   .folder-error { margin: 0; font-size: 0.8125rem; color: var(--color-error); }
 
-  .uploading-msg {
-    text-align: center; margin-top: 16px; font-size: 0.875rem; color: var(--color-text-secondary);
+  /* Processing / error state (mirrors DownloadFolderPanel's state-row convention) */
+  .state-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.875rem; color: var(--color-text-secondary);
+    padding: 12px 0;
   }
+  .state-row.error { color: var(--color-error); }
+  .progress-spacer { margin-top: 16px; }
 
   /* Results */
   .results { display: flex; flex-direction: column; gap: 16px; }
@@ -338,6 +433,10 @@
   .summary-row.skipped {
     background: color-mix(in srgb, var(--color-warning) 12%, transparent);
     color: color-mix(in srgb, var(--color-warning) 70%, var(--color-text-primary));
+  }
+  .summary-row.failed {
+    background: color-mix(in srgb, var(--color-error) 10%, transparent);
+    color: var(--color-error);
   }
   .summary-row span { color: var(--color-text-primary); }
 

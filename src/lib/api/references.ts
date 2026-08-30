@@ -1,7 +1,7 @@
 import { get } from 'svelte/store'
 import { api, makeApi, ApiError } from './client'
 import { authStore } from '$lib/stores/auth'
-import type { Reference, CreateReferencePayload, PatchReferencePayload, PageResult, BibImportResult, ReferenceSearchResult } from '$lib/types/reference'
+import type { Reference, CreateReferencePayload, PatchReferencePayload, PageResult, BibImportJob, ReferenceSearchResult } from '$lib/types/reference'
 import type { Viewer } from '$lib/types/viewer'
 
 const BASE = '/api/v1/references'
@@ -52,11 +52,14 @@ export function makeReferencesApi(fetchFn?: typeof fetch) {
     assignFolder: (id: string, folderId: string | null) =>
       a.put<Reference>(`${BASE}/${id}/folder`, { folder_id: folderId }),
 
+    // Kicks off an async import job — returns immediately with { job_id, status: 'PENDING', total }.
+    // Poll getImportJob() for progress and the final result.
     importBib: (file: File, folderId?: string) => {
       const fd = new FormData(); fd.append('file', file)
       const url = folderId ? `${BASE}/import?folderId=${folderId}` : `${BASE}/import`
-      return a.upload<BibImportResult>(url, fd)
+      return a.upload<BibImportJob>(url, fd)
     },
+    getImportJob: (jobId: string) => a.get<BibImportJob>(`${BASE}/import/${jobId}`),
 
     listViewers:  (id: string)                          => a.get<Viewer[]>(`${BASE}/${id}/viewers`),
     addViewer:    (id: string, viewer_username: string) => a.post<void>(`${BASE}/${id}/viewers`, { viewer_username }),

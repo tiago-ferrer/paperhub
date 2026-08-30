@@ -7,7 +7,7 @@ TypeScript interfaces and enums that mirror the backend REST API models. No busi
 | File | Key exports |
 |---|---|
 | `auth.ts` | `LoginPayload`, `RegisterPayload`, `TokenResponse`, `UserProfile` |
-| `reference.ts` | `Reference`, `BibTexEntryType` (14-value enum), `CreateReferencePayload`, `PatchReferencePayload` |
+| `reference.ts` | `Reference`, `BibTexEntryType` (14-value enum), `CreateReferencePayload`, `PatchReferencePayload`, `BibImportJob`/`BibImportJobStatus` (async .bib import job, polled like `TranscriptStatus`) |
 | `notebook.ts` | `Notebook`, `NotebookPost`, `HandwritingPost`, `PostAttachment`, `CreateNotebookPayload`, `PatchNotebookPayload`, `CreatePostPayload`, `PatchPostPayload`, `PageResult<T>` |
 | `project.ts` | `Project`, `ProjectItem`, `ProjectItemType` enum (`NOTEBOOK`, `PAPER`, `KANBAN_BOARD`, `GANTT_CHART`, `TRANSCRIPTION_GROUP`) |
 | `kanban.ts` | `KanbanBoard`, `KanbanColumn`, `KanbanCard`, `CreateBoardPayload`, `PatchBoardPayload` |
