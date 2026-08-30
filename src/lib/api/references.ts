@@ -114,7 +114,10 @@ export async function downloadFolderZip(
     received += value.length
     opts.onProgress?.(received)
   }
-  return { blob: new Blob(chunks, { type: 'application/zip' }), filename }
+  // Blob's BlobPart type wants ArrayBufferView<ArrayBuffer>, but the DOM lib types
+  // stream chunks as Uint8Array<ArrayBufferLike> (which also covers SharedArrayBuffer) —
+  // Blob itself accepts any ArrayBufferView at runtime, so this is a type-only mismatch.
+  return { blob: new Blob(chunks as BlobPart[], { type: 'application/zip' }), filename }
 }
 
 function filenameFromContentDisposition(header: string | null): string | null {
