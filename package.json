@@ -23,6 +23,8 @@
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.1.18",
+		"@types/react": "^19.2.18",
+		"@types/react-dom": "^19.2.7",
 		"svelte": "^5.51.0",
 		"svelte-check": "^4.4.2",
 		"tailwindcss": "^4.1.18",
@@ -35,9 +37,12 @@
 		]
 	},
 	"dependencies": {
+		"@excalidraw/excalidraw": "^0.18.1",
 		"katex": "^0.16.38",
 		"lucide-svelte": "^0.577.0",
 		"marked": "^17.0.4",
-		"mermaid": "^11.13.0"
+		"mermaid": "^11.13.0",
+		"react": "^19.2.8",
+		"react-dom": "^19.2.8"
 	}
 }
