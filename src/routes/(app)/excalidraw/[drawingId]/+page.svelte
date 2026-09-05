@@ -42,21 +42,28 @@
   // it never round-trips through our own API a second time.
   let initialScene = $state<ExcalidrawSceneData | null>(null)
   let sceneLoading = $state(!!data.sceneUrl)
+  // Deliberately NOT the same as "no scene yet" (new drawing, initialScene stays null
+  // and the canvas mounts blank on purpose). When a drawing HAS a saved scene and it
+  // fails to load, the canvas must not mount at all — autosave would otherwise fire on
+  // the first change and overwrite the real saved scene with an empty one.
+  let sceneLoadError = $state(false)
 
-  onMount(() => {
+  async function loadScene() {
     if (!data.sceneUrl) return
-    ;(async () => {
-      try {
-        const res = await fetch(data.sceneUrl!)
-        if (!res.ok) throw new Error('Failed to fetch scene')
-        initialScene = await res.json()
-      } catch {
-        toast.error('Failed to load the saved drawing')
-      } finally {
-        sceneLoading = false
-      }
-    })()
-  })
+    sceneLoading = true
+    sceneLoadError = false
+    try {
+      const res = await fetch(data.sceneUrl)
+      if (!res.ok) throw new Error('Failed to fetch scene')
+      initialScene = await res.json()
+    } catch {
+      sceneLoadError = true
+    } finally {
+      sceneLoading = false
+    }
+  }
+
+  onMount(() => { void loadScene() })
 
   // ── Autosave ─────────────────────────────────────────────────────────────────
   // NOTE: no lock/collaboration — two tabs open on the same drawing is last-write-wins.
@@ -146,6 +153,11 @@
   <div class="editor-body">
     {#if sceneLoading}
       <div class="canvas-loading"><Spinner size={28} /></div>
+    {:else if sceneLoadError}
+      <div class="canvas-error">
+        <p>Failed to load the saved drawing.</p>
+        <Button variant="outlined" size="sm" onclick={loadScene}>Retry</Button>
+      </div>
     {:else if browser}
       <ExcalidrawCanvas
         initialData={initialScene}
@@ -222,6 +234,13 @@
     display: flex; align-items: center; justify-content: center;
     background: var(--color-surface-1);
   }
+
+  .canvas-error {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    background: var(--color-surface-1); color: var(--color-text-secondary); font-size: 0.875rem;
+  }
+  .canvas-error p { margin: 0; }
 
   @media (max-width: 1019px) {
     .btn-label { display: none; }
