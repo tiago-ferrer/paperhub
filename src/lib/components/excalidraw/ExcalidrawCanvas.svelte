@@ -31,17 +31,37 @@
   let renderFn: ((props: ExcalidrawProps) => void) | null = null
   let root: import('react-dom/client').Root | null = null
 
+  // AppState.collaborators is a runtime Map (SocketId -> Collaborator). JSON.stringify
+  // silently turns a Map into `{}`, so any appState we've ever persisted has it as a
+  // plain object rather than a Map — handing that back to Excalidraw as `initialData`
+  // crashes deep inside its React tree the moment it calls `.forEach()` on it. Stripping
+  // the key lets Excalidraw's own default-merge fill in a fresh Map instead, and doing
+  // the same before forwarding onChange's appState keeps us from ever persisting a bad
+  // one again.
+  function stripCollaborators(appState: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+    if (!appState || !('collaborators' in appState)) return appState
+    const { collaborators: _collaborators, ...rest } = appState
+    return rest
+  }
+
   function renderTree() {
     if (!renderFn) return
+    const sanitizedInitialData = initialData
+      ? { ...initialData, appState: stripCollaborators(initialData.appState) }
+      : null
     renderFn({
       excalidrawAPI: (api) => onapi?.(api),
       // Cast at the boundary: our own ExcalidrawSceneData type deliberately keeps
       // `elements`/`appState`/`files` as unknown so nothing outside this wrapper couples
       // to the library's element/app-state shape.
-      initialData: (initialData as ExcalidrawInitialDataState | null) ?? undefined,
+      initialData: (sanitizedInitialData as ExcalidrawInitialDataState | null) ?? undefined,
       theme,
       onChange: (elements, appState, files) =>
-        onchange?.(elements, appState as unknown as Record<string, unknown>, files as unknown as Record<string, unknown>),
+        onchange?.(
+          elements,
+          stripCollaborators(appState as unknown as Record<string, unknown>) ?? {},
+          files as unknown as Record<string, unknown>,
+        ),
     })
   }
 
