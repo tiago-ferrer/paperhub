@@ -6,6 +6,7 @@ export type ProjectItemType =
   | 'TRANSCRIPTION'
   | 'KANBAN_BOARD'
   | 'GANTT_CHART'
+  | 'EXCALIDRAW_DRAWING'
 
 export interface ProjectItem {
   id: string

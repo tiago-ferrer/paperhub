@@ -10,11 +10,14 @@
   import type { ExcalidrawSceneData } from '$lib/types/excalidraw'
   import ExcalidrawCanvas from '$lib/components/excalidraw/ExcalidrawCanvas.svelte'
   import Spinner from '$lib/components/ui/Spinner.svelte'
-  import { Pencil, Check, X } from 'lucide-svelte'
+  import Button from '$lib/components/ui/Button.svelte'
+  import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
+  import { Pencil, Check, X, FolderOpen } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
 
   let drawing = $state({ ...data.drawing })
+  let showAddToProject = $state(false)
 
   // ── Title editing (immediate PATCH, separate from scene autosave) ──────────────
   let editingTitle = $state(false)
@@ -134,6 +137,9 @@
       {#if saveStatusLabel}
         <span class="save-status" class:save-status--error={saveStatus === 'error'}>{saveStatusLabel}</span>
       {/if}
+      <Button variant="outlined" size="sm" onclick={() => showAddToProject = true}>
+        <FolderOpen size={16} /><span class="btn-label"> Add to Project</span>
+      </Button>
     </div>
   </div>
 
@@ -149,6 +155,13 @@
     {/if}
   </div>
 </div>
+
+<AddToProjectModal
+  open={showAddToProject}
+  entityType="EXCALIDRAW_DRAWING"
+  entityId={drawing.id}
+  onclose={() => showAddToProject = false}
+/>
 
 <style>
   .editor-page {
@@ -208,5 +221,9 @@
     width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
     background: var(--color-surface-1);
+  }
+
+  @media (max-width: 1019px) {
+    .btn-label { display: none; }
   }
 </style>

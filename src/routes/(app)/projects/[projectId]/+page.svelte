@@ -17,7 +17,7 @@
   import { formatDate } from '$lib/utils/format'
   import {
     Plus, Pencil, X, NotebookPen, Mic, FileText,
-    BookOpen, FolderOpen, KanbanSquare, GanttChart as GanttIcon
+    BookOpen, FolderOpen, KanbanSquare, GanttChart as GanttIcon, PenTool
   } from 'lucide-svelte'
 
   let { data }: { data: PageData } = $props()
@@ -73,6 +73,7 @@
     TRANSCRIPTION:       project.items.filter(i => i.type === 'TRANSCRIPTION'),
     KANBAN_BOARD:        project.items.filter(i => i.type === 'KANBAN_BOARD'),
     GANTT_CHART:         project.items.filter(i => i.type === 'GANTT_CHART'),
+    EXCALIDRAW_DRAWING:  project.items.filter(i => i.type === 'EXCALIDRAW_DRAWING'),
   })
 
   // Already-added entity ids (for deduplication in add flow)
@@ -94,6 +95,9 @@
     if (item.type === 'GANTT_CHART') {
       return data.ganttCharts.items.find(c => c.id === item.entity_id)?.title ?? item.entity_id
     }
+    if (item.type === 'EXCALIDRAW_DRAWING') {
+      return data.drawings.items.find(d => d.id === item.entity_id)?.title ?? item.entity_id
+    }
     // NOTEBOOK_POST and TRANSCRIPTION resolved async
     return resolvedNames[item.entity_id] ?? item.entity_id
   }
@@ -106,6 +110,7 @@
     if (item.type === 'TRANSCRIPTION') return `/transcription/${item.parent_id}/${item.entity_id}`
     if (item.type === 'KANBAN_BOARD') return `/kanban/${item.entity_id}`
     if (item.type === 'GANTT_CHART') return `/gantt/${item.entity_id}`
+    if (item.type === 'EXCALIDRAW_DRAWING') return `/excalidraw/${item.entity_id}`
     return '/'
   }
 
@@ -206,6 +211,7 @@
   const TYPES: { type: ProjectItemType; label: string }[] = [
     { type: 'KANBAN_BOARD',        label: 'Kanban Board' },
     { type: 'GANTT_CHART',         label: 'Gantt Chart' },
+    { type: 'EXCALIDRAW_DRAWING',  label: 'Excalidraw Drawing' },
     { type: 'PAPER',               label: 'Paper' },
     { type: 'NOTEBOOK',            label: 'Notebook' },
     { type: 'NOTEBOOK_POST',       label: 'Notebook Post' },
@@ -219,6 +225,7 @@
     PAPER:               'Paper',
     KANBAN_BOARD:        'Board',
     GANTT_CHART:         'Gantt',
+    EXCALIDRAW_DRAWING:  'Drawing',
     NOTEBOOK_POST:       'Post',
     TRANSCRIPTION:       'Recording',
   }
@@ -229,6 +236,7 @@
     PAPER:               'Papers',
     KANBAN_BOARD:        'Kanban Boards',
     GANTT_CHART:         'Gantt Charts',
+    EXCALIDRAW_DRAWING:  'Excalidraw Drawings',
     NOTEBOOK_POST:       'Posts',
     TRANSCRIPTION:       'Transcriptions',
   }
@@ -452,6 +460,29 @@
           {/if}
         {/if}
 
+      {:else if addType === 'EXCALIDRAW_DRAWING'}
+        {#if data.drawings.error}
+          <SectionError label="Excalidraw drawings" onretry={() => invalidateAll()} />
+        {:else}
+          {#each data.drawings.items as drawing}
+            {@const alreadyAdded = addedIds.has(drawing.id)}
+            <button
+              class="entity-row"
+              class:selected={addEntityId === drawing.id}
+              class:already-added={alreadyAdded}
+              disabled={alreadyAdded}
+              onclick={() => addEntityId = addEntityId === drawing.id ? null : drawing.id}
+            >
+              <PenTool size={18} />
+              <span class="entity-label">{drawing.title}</span>
+              {#if alreadyAdded}<span class="added-chip">Added</span>{/if}
+            </button>
+          {/each}
+          {#if data.drawings.items.length === 0}
+            <p class="empty-list">No Excalidraw drawings found.</p>
+          {/if}
+        {/if}
+
       {:else if addType === 'NOTEBOOK_POST'}
         {#if !addParentId}
           <p class="step-hint">Step 1: Choose a notebook</p>
@@ -623,6 +654,7 @@
   .type-badge--paper               { background: color-mix(in srgb, #22c55e 12%, transparent); color: #22c55e; }
   .type-badge--kanban_board        { background: color-mix(in srgb, #f97316 12%, transparent); color: #f97316; }
   .type-badge--gantt_chart         { background: color-mix(in srgb, #14b8a6 12%, transparent); color: #14b8a6; }
+  .type-badge--excalidraw_drawing  { background: color-mix(in srgb, #ec4899 12%, transparent); color: #ec4899; }
   .type-badge--notebook_post       { background: color-mix(in srgb, #a855f7 12%, transparent); color: #a855f7; }
   .type-badge--transcription       { background: color-mix(in srgb, #f59e0b 12%, transparent); color: #f59e0b; }
 
