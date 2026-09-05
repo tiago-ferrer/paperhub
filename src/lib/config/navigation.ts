@@ -1,4 +1,4 @@
-import { FileText, FolderOpen, Plug, KanbanSquare, LayoutDashboard, Mic, NotebookPen, Settings, GanttChart, Puzzle } from 'lucide-svelte'
+import { FileText, FolderOpen, Plug, KanbanSquare, LayoutDashboard, Mic, NotebookPen, Settings, GanttChart, Puzzle, PenTool } from 'lucide-svelte'
 
 export interface NavItem {
   label: string
@@ -21,6 +21,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { label: 'Kanban', href: '/kanban', icon: KanbanSquare },
       { label: 'Gantt', href: '/gantt', icon: GanttChart },
+      { label: 'Excalidraw', href: '/excalidraw', icon: PenTool },
       { label: 'Projects', href: '/projects', icon: FolderOpen },
     ],
   },
