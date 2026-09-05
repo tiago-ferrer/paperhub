@@ -9,6 +9,7 @@
   import { kanbanBoards, refreshKanbanBoards } from '$lib/stores/kanbanBoards'
   import { projects, refreshProjects } from '$lib/stores/projects'
   import { ganttCharts, refreshGanttCharts } from '$lib/stores/ganttCharts'
+  import { excalidrawDrawings, refreshExcalidrawDrawings } from '$lib/stores/excalidrawDrawings'
   import { ChevronLeft, ChevronRight, Plus } from 'lucide-svelte'
   import Avatar from '$lib/components/ui/Avatar.svelte'
 
@@ -18,18 +19,20 @@
   const visibleBoards = $derived($kanbanBoards.filter(b => !b.deleted))
   const visibleProjects = $derived($projects.filter(p => !p.deleted))
   const visibleGanttCharts = $derived($ganttCharts.filter(c => !c.deleted))
+  const visibleDrawings = $derived($excalidrawDrawings.filter(d => !d.deleted))
 
   let notebooksExpanded = $state(false)
   let transcriptionExpanded = $state(false)
   let kanbanExpanded = $state(false)
   let projectsExpanded = $state(false)
   let ganttExpanded = $state(false)
+  let excalidrawExpanded = $state(false)
   let mcpApiKeysExpanded = $state(false)
 
   // Close mobile sidebar on navigation
   $effect(() => { $page.url.pathname; closeMobileSidebar() })
 
-  onMount(() => { refreshTranscriptionGroups(); refreshNotebooks(); refreshKanbanBoards(); refreshProjects(); refreshGanttCharts() })
+  onMount(() => { refreshTranscriptionGroups(); refreshNotebooks(); refreshKanbanBoards(); refreshProjects(); refreshGanttCharts(); refreshExcalidrawDrawings() })
 
   function toggleNotebooks() {
     notebooksExpanded = !notebooksExpanded
@@ -49,6 +52,10 @@
 
   function toggleGantt() {
     ganttExpanded = !ganttExpanded
+  }
+
+  function toggleExcalidraw() {
+    excalidrawExpanded = !excalidrawExpanded
   }
 
   function toggleMcpApiKeys() {
@@ -85,7 +92,7 @@
       {/if}
       {#each section.items as item}
         {@const active = activeHref.startsWith(item.href)}
-        <div class="nav-item-wrapper" class:has-submenu={item.href === '/notebooks' || item.href === '/transcription' || item.href === '/kanban' || item.href === '/projects' || item.href === '/gantt' || item.submenu}>
+        <div class="nav-item-wrapper" class:has-submenu={item.href === '/notebooks' || item.href === '/transcription' || item.href === '/kanban' || item.href === '/projects' || item.href === '/gantt' || item.href === '/excalidraw' || item.submenu}>
           <a
             href={item.href}
             class="nav-item"
@@ -149,6 +156,16 @@
               title={projectsExpanded ? 'Collapse' : 'Expand'}
             >
               <ChevronRight size={18} class={projectsExpanded ? 'rotated' : ''} />
+            </button>
+          {/if}
+          {#if item.href === '/excalidraw' && !$sidebarCollapsed}
+            <button
+              class="submenu-toggle"
+              onclick={toggleExcalidraw}
+              aria-label={excalidrawExpanded ? 'Collapse excalidraw' : 'Expand excalidraw'}
+              title={excalidrawExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronRight size={18} class={excalidrawExpanded ? 'rotated' : ''} />
             </button>
           {/if}
           {#if item.submenu && !$sidebarCollapsed}
@@ -226,6 +243,24 @@
           <a href="/gantt" class="nav-item nav-subitem nav-subitem-new">
             <Plus size={14} />
             <span>New chart</span>
+          </a>
+        {/if}
+        {#if item.href === '/excalidraw' && !$sidebarCollapsed && excalidrawExpanded}
+          {#each visibleDrawings as drawing}
+            {@const drawingActive = activeHref.startsWith(`/excalidraw/${drawing.id}`)}
+            <a
+              href="/excalidraw/{drawing.id}"
+              class="nav-item nav-subitem"
+              class:active={drawingActive}
+              aria-current={drawingActive ? 'page' : undefined}
+            >
+              <span class="subitem-dot">·</span>
+              <span>{drawing.title}</span>
+            </a>
+          {/each}
+          <a href="/excalidraw" class="nav-item nav-subitem nav-subitem-new">
+            <Plus size={14} />
+            <span>New drawing</span>
           </a>
         {/if}
         {#if item.href === '/projects' && !$sidebarCollapsed && projectsExpanded}

@@ -5,6 +5,7 @@ import { makeTranscriptionApi } from '$lib/api/transcription'
 import { makeReferencesApi } from '$lib/api/references'
 import { makeKanbanApi } from '$lib/api/kanban'
 import { makeGanttApi } from '$lib/api/gantt'
+import { makeExcalidrawApi } from '$lib/api/excalidraw'
 import { error } from '@sveltejs/kit'
 import { ApiError } from '$lib/api/client'
 import { settle } from '$lib/utils/settle'
@@ -32,12 +33,13 @@ export const load: PageLoad = async ({ params, fetch }) => {
   // Degradable: these only feed the "grouped by type" section and the add-item
   // picker. A 500 on any one of them shouldn't take the whole project page down
   // (see $lib/utils/settle.ts) — each renders its own SectionError instead.
-  const [notebooks, groups, references, boards, ganttCharts] = await Promise.all([
+  const [notebooks, groups, references, boards, ganttCharts, drawings] = await Promise.all([
     settle(makeNotebooksApi(fetch).list(0, 100, false)),
     settle(makeTranscriptionApi(fetch).listGroups(0, 100, false)),
     settle(makeReferencesApi(fetch).list(0, 100)),
     settle(makeKanbanApi(fetch).listBoards(0, 100, false)),
     settle(makeGanttApi(fetch).listCharts(0, 100, false)),
+    settle(makeExcalidrawApi(fetch).listDrawings(0, 100, false)),
   ])
 
   return {
@@ -47,5 +49,6 @@ export const load: PageLoad = async ({ params, fetch }) => {
     references:  toSection(references),
     boards:      toSection(boards),
     ganttCharts: toSection(ganttCharts),
+    drawings:    toSection(drawings),
   }
 }

@@ -7,13 +7,14 @@
   import type { TranscriptionGroup, Transcription } from '$lib/types/transcription'
   import type { Project } from '$lib/types/project'
   import type { GanttChart } from '$lib/types/gantt'
+  import type { ExcalidrawDrawing } from '$lib/types/excalidraw'
 
   function truncate(text: string, max = 24): string {
     return text.length > max ? text.slice(0, max).trimEnd() + '…' : text
   }
 
   function labelFor(part: string): string {
-    const data = $page.data as { reference?: Reference; notebook?: Notebook; post?: NotebookPost; handwritingPost?: HandwritingPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project; chart?: GanttChart }
+    const data = $page.data as { reference?: Reference; notebook?: Notebook; post?: NotebookPost; handwritingPost?: HandwritingPost; board?: KanbanBoard; group?: TranscriptionGroup; transcription?: Transcription; project?: Project; chart?: GanttChart; drawing?: ExcalidrawDrawing }
 
     if (data.reference && part === data.reference.id) {
       const firstAuthor = data.reference.author?.[0]?.split(' ').pop() ?? ''
@@ -31,6 +32,10 @@
 
     if (data.board && part === data.board.id) {
       return truncate(data.board.title)
+    }
+
+    if (data.drawing && part === data.drawing.id) {
+      return truncate(data.drawing.title)
     }
 
     if (data.group && part === data.group.id) {
