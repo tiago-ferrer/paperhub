@@ -14,6 +14,7 @@
   import FormField from '$lib/components/forms/FormField.svelte'
   import AddToProjectModal from '$lib/components/projects/AddToProjectModal.svelte'
   import CopyCitation from '$lib/components/references/CopyCitation.svelte'
+  import BibExportMenu from '$lib/components/references/BibExportMenu.svelte'
   import { formatDate, formatBytes, formatDoi } from '$lib/utils/format'
   import { Pencil, Users, Plus, ExternalLink, Download, FileText, Trash2, Eye, FolderOpen, FileCheck, Maximize2, Minimize2 } from 'lucide-svelte'
   import type { Attachment } from '$lib/types/reference'
@@ -171,6 +172,7 @@
       <Button variant="outlined" size="sm" onclick={() => showAddToProject = true}>
         <FolderOpen size={20} /><span class="btn-label"> Add to Project</span>
       </Button>
+      <BibExportMenu variant="button" references={[reference]} filenameBase={reference.citation_key ?? reference.title} />
       {#if reference.role === 'OWNER'}
         <Button variant="outlined" size="sm" onclick={() => goto(`/references/${reference.id}/viewers`)}>
           <Users size={20} /><span class="btn-label"> Viewers</span>

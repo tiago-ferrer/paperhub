@@ -17,6 +17,8 @@
   import FromBibTexModal from '$lib/components/references/FromBibTexModal.svelte'
   import ImportBibModal from '$lib/components/references/ImportBibModal.svelte'
   import DownloadFolderPanel from '$lib/components/references/DownloadFolderPanel.svelte'
+  import ExportBibFolderPanel from '$lib/components/references/ExportBibFolderPanel.svelte'
+  import BibExportMenu from '$lib/components/references/BibExportMenu.svelte'
   import { formatDate } from '$lib/utils/format'
   import { Plus, Eye, Pencil, Trash2, Users, BookMarked, Columns3, FileUp, FolderOpen, FolderX, Search, X, Download } from 'lucide-svelte'
 
@@ -252,6 +254,7 @@
   let showFromBibTex     = $state(false)
   let showImportBib      = $state(false)
   let showDownloadFolder = $state(false)
+  let showExportBib      = $state(false)
 
   // Venue: journal > booktitle > publisher > —
   function venue(r: Reference): string {
@@ -346,6 +349,9 @@
             <Button variant="outlined" size="sm" onclick={() => showDownloadFolder = true}>
               <Download size={16} /> Baixar pasta
             </Button>
+            <Button variant="outlined" size="sm" onclick={() => showExportBib = true}>
+              <BookMarked size={16} /> Exportar .bib
+            </Button>
           {/if}
 
           <!-- Column picker -->
@@ -416,6 +422,7 @@
                     <button class="icon-btn" title="View" onclick={() => goto(`/references/${reference.id}`)}>
                       <Eye size={20} />
                     </button>
+                    <BibExportMenu references={[reference]} filenameBase={reference.citation_key ?? reference.title} />
                     {#if reference.role === 'OWNER'}
                       <button class="icon-btn" title="Edit" onclick={() => goto(`/references/${reference.id}/edit`)}>
                         <Pencil size={20} />
@@ -498,6 +505,7 @@
               <div class="card-footer">
                 <span class="card-date">{formatDate(reference.updated_at)}</span>
                 <div class="card-actions" onclick={(e) => e.stopPropagation()}>
+                  <BibExportMenu references={[reference]} filenameBase={reference.citation_key ?? reference.title} />
                   {#if reference.role === 'OWNER'}
                     <button class="icon-btn" title="Edit" onclick={() => goto(`/references/${reference.id}/edit`)}>
                       <Pencil size={20} />
@@ -552,6 +560,13 @@
   folderId={data.folderId === 'unfiled' ? null : data.folderId}
   folderLabel={downloadFolderLabel}
   onclose={() => showDownloadFolder = false}
+/>
+
+<ExportBibFolderPanel
+  open={showExportBib}
+  folderId={data.folderId === 'unfiled' ? null : data.folderId}
+  folderLabel={downloadFolderLabel}
+  onclose={() => showExportBib = false}
 />
 
 <DestructiveConfirmDialog
